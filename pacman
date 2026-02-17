@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+#
+# MIT License
+#
+# Copyright (c) 2026 Torsten Bonde Christiansen
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+
+## How does this game work?
+# GAME-LOOP
+#  - check for keyboard input
+#  - update user
+#  - update ghosts
+#  - paint to screen
+# REPEAT
+
+read-keyboard() {
+    ## Proudly copied from Dave Eddy (YSAP): https://github.com/bahamas10/nightfall-tui/tree/main
+	local escape_char=$'\u1b'
+	while true; do
+		local data=
+		read -rsn1 data 2>/dev/null || return
+		if [[ $data == "$escape_char" ]]; then
+			read -rsn2 data 2>/dev/null || return
+		fi
+
+		local output=
+		case "$data" in
+			'[A') output='key-up';;
+			'[B') output='key-down';;
+            '[D') output='key-left';;
+            '[C') output='key-right';;
+			''      ) output='key-enter';;
+            *       ) output="$data"
+		esac
+
+		if [[ -n $output ]]; then
+			echo "$output" >&3
+		fi
+	done
+}
+
+main() {
+	# open the terminal for keyboard input
+	exec 4</dev/tty || fatal 'no terminal detected'
+
+	PIPE=/tmp/pacman.$$
+	mkfifo "$PIPE" || fatal "failed to create pipe $PIPE"
+	exec 3<>"$PIPE" || fatal "failed to open pipe $PIPE"
+
+    read-keyboard <&4 &
+
+	local data
+	while read -ra data; do
+		# we have read an event!
+		local event=${data[0]}
+		local args=("${data[@]:1}")
+
+		echo "read event: $event (${args[*]})"
+    done <&3
+}
+
+main
