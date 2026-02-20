@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # MIT License
 #
@@ -22,47 +22,40 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# PRAGMA: Use once and only as sourced
+if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The statusbar can only be sourced!"; exit 1; fi
+if [ ! -z "${SOURCE_STATUSBAR:-}" ]; then return; fi
 
-## How does this game work?
-# GAME-LOOP
-#  - check for keyboard input
-#  - update user
-#  - update ghosts
-#  - paint to screen
-# REPEAT
+## Configurable parameters
+# Charater to show is the message is too long
+STATUSBAR_POSTFIX="..."
 
-## GLOBALS
-# Base dir for the game
-SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]})"
-# The initial map read from the filesystem. Empty until read
-FULL_MAP=
-# Last registered key from keyboard
-KEY_READ=
+## IMPLEMENTATION
+# Use screen for getting a reserved line at the bottom
+source "${SCRIPT_DIR}/lib/screen"
 
-source "$SCRIPT_DIR/lib/keyboard"
-source "$SCRIPT_DIR/lib/map"
-source "$SCRIPT_DIR/lib/statusbar"
-
-main() {
-	statusbar-setup
-	keyboard-setup
-	screen-erase-all
-	screen-hide-cursor
-
-	read-map "$SCRIPT_DIR/maps/map1"
-	echo "${FULL_MAP[@]}"
-
-	while [[ "$KEY_READ" != "key-end" ]]; do
-		# Update KEY_READ variable
-		local new_key
-		read -rs -u 3 -t .001 new_key
-
-		if [[ -n $new_key ]]; then
-			KEY_READ=$new_key
-		fi
-	done;
-
-	screen-show-cursor
+# Setup the statusbar
+statusbar-setup() {
+    screen_reserve_line "bottom"
+    _statusbar_line=$SCREEN_LINE
 }
 
-main
+## Update the statusbar content
+# $1: The message to put on the statusbar
+statusbar-update() {
+    local msg="$1"
+    local len=${#msg}
+
+    if (( len > COLUMNS )); then
+        # Slice string to allow for STATUSBAR_POSTFIX at the end
+        local postfix_len=${#STATUSBAR_POSTFIX}
+        local msg_cut_pos=$((SCREEN_WIDTH - postfix_len))
+        msg=${msg:0:$msg_cut_pos}$STATUSBAR_POSTFIX
+    fi
+
+    screen_write_to_reserved_line "bottom" "$_statusbar_line" "$msg"
+}
+
+
+export SOURCE_STATUSBAR=1
+

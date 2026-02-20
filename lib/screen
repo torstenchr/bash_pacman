@@ -1,0 +1,128 @@
+#!/bin/bash
+#
+# MIT License
+#
+# Copyright (c) 2026 Torsten Bonde Christiansen
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# PRAGMA: Use once and only as sourced
+if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The screen.sh can only be sourced!"; exit 1; fi
+if [ ! -z "${SOURCE_SCREEN:-}" ]; then return; fi
+
+# Set checkwinsize is such that the terminal windows dimensions are awailable in the env. variables
+shopt -s checkwinsize
+(:)
+
+declare -i _reserved_lines
+_reserved_lines=0
+
+SCREEN_LINE=""
+export SCREEN_LINE
+
+SCREEN_WIDTH=$COLUMNS
+SCREEN_LINES=$LINES
+
+
+# Request screen to get a reserved line at "position"
+#  $1: Position to request the reserved line:
+#       "bottom": get at line at the bottom of the screen
+#  SCREEN_LINE: variable is set with the result of the call
+screen_reserve_line() {
+    local position="$1"
+    case "$position" in
+        "bottom")
+            SCREEN_LINE=$_reserved_lines
+            ((_reserved_lines++))
+            _screen_init
+            return
+            ;;
+        *)
+            echo "Unknown screen position: $position"
+            exit 1
+    esac
+}
+
+# Writes to a reserved line
+#  $1: Position of reserved line:
+#       "bottom": get at line at the bottom of the screen
+#  $2: Index of reserved line in integer
+#  $3: String content
+screen_write_to_reserved_line() {
+    local position="$1"
+    local index="$2"
+    local text="$3"
+
+	printf '\e7' # save the cursor location
+	  printf '\e[%d;%dH' "$((SCREEN_LINES - index))" 0 # move cursor to the reserved line
+	  printf '\e[0K' # clear the line
+	  printf '%s' "$text" # print the progress bar
+	printf '\e8' # restore the cursor location
+}
+
+screen-erase-all() {
+  printf '\e[2J'
+  printf '\e[H'
+}
+
+screen-hide-cursor() {
+  printf '\e[?25l'
+}
+
+screen-show-cursor() {
+  printf '\e[?25h'
+}
+
+_screen_init() {
+    # Do not init if nothing is reserved
+  if [[ $_reserved_lines == 0 ]]; then return; fi
+
+  SCREEN_WIDTH=$COLUMNS
+  SCREEN_LINES=$LINES  
+
+	printf '\n' # ensure we have space
+	  printf '\e7' # save the cursor location
+	    printf '\e[%d;%dr' 0 "$((SCREEN_LINES - _reserved_lines))" # set the scrollable region (margin)
+	  printf '\e8' # restore the cursor location
+	printf '\e[1A' # move cursor up
+}
+
+
+_screen_deinit() {
+    # Do not init if nothing is reserved
+    if [[ $_reserved_lines == 0 ]]; then return; fi
+
+	printf '\e7' # save the cursor location
+	  printf '\e[%d;%dr' 0 "$SCREEN_LINES" # reset the scrollable region (margin)
+
+      # Reset all lines that have been reserved
+      for i in $(seq 1 "$_reserved_lines")
+      do
+        printf '\e[%d;%dH' "$((SCREEN_LINES - (i - 1) ))" 0 # move cursor to the bottom line
+        printf '\e[0K' # clear the line
+      done
+	printf '\e8' # reset the cursor location
+}
+
+source "${SCRIPT_DIR}/lib/traps"
+
+trap_add "_screen_deinit" exit
+trap_add "_screen_init" winch
+
+SOURCE_SCREEN=1
