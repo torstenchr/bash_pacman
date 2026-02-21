@@ -76,6 +76,17 @@ screen_write_to_reserved_line() {
 	printf '\e8' # restore the cursor location
 }
 
+screen-pos-at() {
+  local col="$1"
+  local row="$2"
+
+  printf "\e[{$row};{$col}H"
+}
+
+screen-pos-home() {
+	printf '\e[H'
+}
+
 screen-erase-all() {
   printf '\e[2J'
   printf '\e[H'

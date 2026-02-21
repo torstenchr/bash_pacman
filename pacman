@@ -38,31 +38,195 @@ SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]})"
 FULL_MAP=
 # Last registered key from keyboard
 KEY_READ=
+# PACMAN stuff
+PACMAN_POS=(4 14)
+PACMAN_OLD_POS=(4 14)
+declare -A PACMAN_ICONS
+PACMAN_ICONS[left]="Ↄ"
+PACMAN_ICONS[right]="C"
+PACMAN_ICONS[up]="U"
+PACMAN_ICONS[down]="∩"
+PACMAN_ICON=${PACMAN_ICONS[right]}
+PACMAN_EMPTY_ICON=" "
+PACMAN_DIRECTION=""
+PACMAN_ELAPSE_TIMER=0
+PACMAN_MOVE_EVERY_MS=100  # Move every 0.5 second
+PACMAN_MOVE_EVERY_US=$(( PACMAN_MOVE_EVERY_MS * 1000 ))
+
+# Game loop variables
+RUNNING=1
+DEBUG=
+DEBUG_FLAGS=()
 
 source "$SCRIPT_DIR/lib/keyboard"
 source "$SCRIPT_DIR/lib/map"
 source "$SCRIPT_DIR/lib/statusbar"
+source "$SCRIPT_DIR/lib/timer"
 
-main() {
-	statusbar-setup
-	keyboard-setup
+setup() {
 	screen-erase-all
 	screen-hide-cursor
+	statusbar-setup
+	keyboard-setup
+}
+
+teardown() {
+	screen-show-cursor
+}
+
+update-keyboard() {
+	local new_key
+	read -rs -u 3 -t .001 new_key
+
+	if [[ -n $new_key ]]; then
+		KEY_READ=$new_key
+	fi
+}
+
+handle-keyboard() {
+	case $KEY_READ in
+		"key-home")
+			toggle-debug
+			;;
+		"key-end")
+			unset RUNNING
+			;;
+		"key-left" | "a")
+			PACMAN_DIRECTION="left"
+			;;
+		"key-right" | "d")
+			PACMAN_DIRECTION="right"
+			;;
+		"key-up" | "w")
+			PACMAN_DIRECTION="up"
+			;;
+		"key-down" | "s")
+			PACMAN_DIRECTION="down"
+			;;
+		[1-9])
+			if [[ -z ${DEBUG_FLAGS[$KEY_READ]} ]]; then
+				DEBUG_FLAGS["$KEY_READ"]="1"
+			else
+				DEBUG_FLAGS["$KEY_READ"]=""
+			fi
+			;;
+	esac
+	KEY_READ=
+}
+
+update-pacman() {
+	## Measure time since last move, only move every PACMAN_MOVE_EVERY_US microsecs
+	local frame_time
+	frame_time=$(timer-get-elapse-time)
+	PACMAN_ELAPSE_TIMER=$(( PACMAN_ELAPSE_TIMER + frame_time ))
+
+	# No movement yet - exit the function
+	[[ $PACMAN_ELAPSE_TIMER -lt $PACMAN_MOVE_EVERY_US ]] && return
+
+	# Reset elapse timer
+	PACMAN_ELAPSE_TIMER=0
+
+	# Store old position - needed when drawing to erase old pacman icon
+	PACMAN_OLD_POS=("${PACMAN_POS[@]}")
+
+	# Update position according to direction
+	local PM_COL="${PACMAN_POS[0]}"
+	local PM_ROW="${PACMAN_POS[1]}"
+	case $PACMAN_DIRECTION in
+		left)  	((PM_COL-=1));;
+		right) 	((PM_COL+=1));;
+		up)		((PM_ROW-=1));;
+		down)	((PM_ROW+=1));;
+	esac
+	# Wrap around edge of maps, ensures both under and over shoot is kept within maps size
+	((PM_COL = (PM_COL + 28) % 28))
+	((PM_ROW = (PM_ROW + 31) % 31))
+
+	## Handle collision with walls
+	local line="${FULL_MAP[${PM_ROW}]}"
+	local cell="${line:$PM_COL:1}"
+	# Pacman can only move on "∙" or empty space
+	if [[ $cell == " " || $cell == "∙" ]]; then
+		# Update position
+		PACMAN_POS=("$PM_COL" "$PM_ROW")
+		# Update Icon for direction
+		PACMAN_ICON=${PACMAN_ICONS[$PACMAN_DIRECTION]}
+	fi
+}
+
+update-map() {
+	# Erase old position of pacman
+	local PM_OLD_COL="${PACMAN_OLD_POS[0]}"
+	local PM_OLD_ROW="${PACMAN_OLD_POS[1]}"
+
+	local line="${FULL_MAP[${PM_OLD_ROW}]}"
+	local replacement="${line:0:$PM_OLD_COL}${PACMAN_EMPTY_ICON}${line:$((PM_OLD_COL+1))}"
+	FULL_MAP[PM_OLD_ROW]="$replacement"
+
+	local PM_COL="${PACMAN_POS[0]}"
+	local PM_ROW="${PACMAN_POS[1]}"
+
+	line="${FULL_MAP[${PM_ROW}]}"
+	replacement="${line:0:$PM_COL}${PACMAN_ICON}${line:$((PM_COL+1))}"
+
+	FULL_MAP[PM_ROW]="$replacement"
+}
+
+toggle-debug() {
+    if [[ -z $DEBUG ]]; then
+        DEBUG=1
+    else
+        unset DEBUG
+    fi
+
+	# Toggle FPS debugging
+	timer-debug
+}
+
+print-map() {
+	screen-pos-home
+	echo "${FULL_MAP[@]}"
+}
+
+update-statusbar() {
+	local fps=$(timer-get-fps)
+	local clock
+	printf -v clock '%(%Y-%m-%d %H:%M:%S)T\n' -1
+
+	local content="Clock: $clock"
+	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[1]} ]] && content="Avg. FPS: $fps | $content"
+	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[2]} ]] && content="Direction: $PACMAN_DIRECTION | $content"
+
+	statusbar-update "$content"
+}
+
+main() {
+	setup
 
 	read-map "$SCRIPT_DIR/maps/map1"
-	echo "${FULL_MAP[@]}"
 
-	while [[ "$KEY_READ" != "key-end" ]]; do
-		# Update KEY_READ variable
-		local new_key
-		read -rs -u 3 -t .001 new_key
+	# GAME LOOP
+	i=0
+	timer-start
+	while [[ -n $RUNNING ]]; do
+		update-keyboard
+		handle-keyboard
 
-		if [[ -n $new_key ]]; then
-			KEY_READ=$new_key
-		fi
+		update-pacman
+		update-map
+		print-map
+
+		update-statusbar
+
+		timer-tick
+		((i=i+1))
 	done;
 
-	screen-show-cursor
+	total_time=$(timer-stop)
+	fps=$(( (i * 1000 * 1000) / total_time ))
+	echo "Total Frames: $i | Total Time: ${total_time}us | Avg. FPS: $fps"
+
+	teardown
 }
 
 main

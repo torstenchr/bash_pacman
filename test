@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]})"
+source "$SCRIPT_DIR/lib/timer"
+
+
+set -x
+timer-start
+
+while true; do
+    timer-tick
+    value=timer-tick
+    echo "$value"
+    sleep 1
+done

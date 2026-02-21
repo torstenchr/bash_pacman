@@ -45,7 +45,6 @@ keyboard-setup() {
 
     _read-keyboard <&4 &
 	_keyboard_read_pid=$!
-	echo "_keyboard_read_pid: $_keyboard_read_pid"
 }
 
 _read-keyboard() {

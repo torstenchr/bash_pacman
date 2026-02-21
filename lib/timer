@@ -1,0 +1,84 @@
+#!/bin/bash
+#
+# MIT License
+#
+# Copyright (c) 2026 Torsten Bonde Christiansen
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# PRAGMA: Use once and only as sourced
+if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The timer can only be sourced!"; exit 1; fi
+if [ ! -z "${SOURCE_TIMER:-}" ]; then return; fi
+
+source "$SCRIPT_DIR/lib/queue"
+
+timer-start() {
+    _TIMER_START=${EPOCHREALTIME/,/}
+    _TIMER_LAST_TICK=$_TIMER_START
+    _TIMER_LAST_ELAPSED=0
+    _TIMER_DEBUG=
+}
+
+timer-tick() {
+    local tick_time=${EPOCHREALTIME/,/}
+    _TIMER_LAST_ELAPSED=$(( tick_time - _TIMER_LAST_TICK ))
+    _TIMER_LAST_TICK="$tick_time"
+
+    if [[ -n $_TIMER_DEBUG  ]]; then
+        # Average FPS over last 30 ticks, not perfect but should be more readable
+        queue-push _TIMER_ELAPSED_US_VALUES "$_TIMER_LAST_ELAPSED" 30
+        _timer-update-fps
+    fi
+}
+
+timer-debug() {
+    if [[ -z $_TIMER_DEBUG ]]; then
+        _TIMER_DEBUG=1
+        _TIMER_ELAPSED_US_VALUES=()
+        _TIMER_FPS=0
+    else
+        unset _TIMER_DEBUG
+    fi
+}
+
+# Stop timer
+timer-stop() {
+    local tick_time=${EPOCHREALTIME/,/}
+    local elapsed_us=$(( tick_time - _TIMER_START ))
+    echo "$elapsed_us"
+}
+
+_timer-update-fps() {
+	local sum=0 avg=0 i
+	for ((i=0; i<${#_TIMER_ELAPSED_US_VALUES[@]}; i++)); do
+		((sum += _TIMER_ELAPSED_US_VALUES[i] ))
+	done
+	((avg = (sum) / ${#_TIMER_ELAPSED_US_VALUES[@]} ))
+    _TIMER_FPS=$(( 1000 * 1000 / avg ))
+}
+
+timer-get-fps() {
+    echo "$_TIMER_FPS"
+}
+
+timer-get-elapse-time() {
+    echo "${_TIMER_LAST_ELAPSED}"
+}
+
+SOURCE_TIMER=1
