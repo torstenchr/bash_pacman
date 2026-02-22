@@ -34,8 +34,6 @@
 ## GLOBALS
 # Base dir for the game
 SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]})"
-# The initial map read from the filesystem. Empty until read
-FULL_MAP=
 # Last registered key from keyboard
 KEY_READ=
 # PACMAN stuff
@@ -57,6 +55,7 @@ PACMAN_MOVE_EVERY_US=$(( PACMAN_MOVE_EVERY_MS * 1000 ))
 RUNNING=1
 DEBUG=
 DEBUG_FLAGS=()
+SCORE=0
 
 source "$SCRIPT_DIR/lib/keyboard"
 source "$SCRIPT_DIR/lib/map"
@@ -143,33 +142,45 @@ update-pacman() {
 	((PM_ROW = (PM_ROW + 31) % 31))
 
 	## Handle collision with walls
-	local line="${FULL_MAP[${PM_ROW}]}"
-	local cell="${line:$PM_COL:1}"
-	# Pacman can only move on "∙" or empty space
-	if [[ $cell == " " || $cell == "∙" ]]; then
-		# Update position
-		PACMAN_POS=("$PM_COL" "$PM_ROW")
-		# Update Icon for direction
-		PACMAN_ICON=${PACMAN_ICONS[$PACMAN_DIRECTION]}
+	local cell_type=$(map-get-cell-type $PM_COL $PM_ROW)
+	case "$cell_type" in
+		"$MAP_CELL_WALL")
+			# Colliding with wall, do nothing
+			return
+			;;
+		"$MAP_CELL_CHEESE")
+			# Hitting Cheese - score a point
+			((SCORE+=1))
+			;;
+		"$MAP_CELL_BONUS")
+			# Hitting a bonus - score a point AND activate bonus period
+			((SCORE+=1))
+			# TODO: Start Bonus Period
+			;;
+		"$MAP_CELL_EMPTY")
+			# Do nothing, just move
+			;;
+	esac
+
+	if [[ "$cell" == "$MAP_CELL_WALL" ]]; then
+		return
 	fi
+
+	# Update position
+	PACMAN_POS=("$PM_COL" "$PM_ROW")
+	# Update Icon for direction
+	PACMAN_ICON=${PACMAN_ICONS[$PACMAN_DIRECTION]}
 }
 
 update-map() {
 	# Erase old position of pacman
 	local PM_OLD_COL="${PACMAN_OLD_POS[0]}"
 	local PM_OLD_ROW="${PACMAN_OLD_POS[1]}"
-
-	local line="${FULL_MAP[${PM_OLD_ROW}]}"
-	local replacement="${line:0:$PM_OLD_COL}${PACMAN_EMPTY_ICON}${line:$((PM_OLD_COL+1))}"
-	FULL_MAP[PM_OLD_ROW]="$replacement"
+	map-set-cell-content "$PM_OLD_COL" "$PM_OLD_ROW" "$PACMAN_EMPTY_ICON"
 
 	local PM_COL="${PACMAN_POS[0]}"
 	local PM_ROW="${PACMAN_POS[1]}"
-
-	line="${FULL_MAP[${PM_ROW}]}"
-	replacement="${line:0:$PM_COL}${PACMAN_ICON}${line:$((PM_COL+1))}"
-
-	FULL_MAP[PM_ROW]="$replacement"
+	map-set-cell-content "$PM_COL" "$PM_ROW" "$PACMAN_ICON"
 }
 
 toggle-debug() {
@@ -185,7 +196,7 @@ toggle-debug() {
 
 print-map() {
 	screen-pos-home
-	echo "${FULL_MAP[@]}"
+	map-print-map
 }
 
 update-statusbar() {
@@ -193,9 +204,11 @@ update-statusbar() {
 	local clock
 	printf -v clock '%(%Y-%m-%d %H:%M:%S)T\n' -1
 
-	local content="Clock: $clock"
-	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[1]} ]] && content="Avg. FPS: $fps | $content"
-	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[2]} ]] && content="Direction: $PACMAN_DIRECTION | $content"
+	local content="Score: $SCORE"
+	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[1]} ]] && content="$content | Avg. FPS: $fps"
+	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[2]} ]] && content="$content | Direction: $PACMAN_DIRECTION"
+	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[3]} ]] && content="$content | Cheese count: $__MAP_CHEESE_COUNT"
+	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[9]} ]] && content="$content | Clock: $clock"
 
 	statusbar-update "$content"
 }
@@ -203,7 +216,7 @@ update-statusbar() {
 main() {
 	setup
 
-	read-map "$SCRIPT_DIR/maps/map1"
+	map-read "$SCRIPT_DIR/maps/map1"
 
 	# GAME LOOP
 	i=0
@@ -215,6 +228,10 @@ main() {
 		update-pacman
 		update-map
 		print-map
+
+		if map-is-clear; then
+			RUNNING=""
+		fi
 
 		update-statusbar
 

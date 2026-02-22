@@ -28,15 +28,87 @@ if [ -n "$SOURCE_MAP" ]; then return; fi
 
 source "$SCRIPT_DIR/lib/utils"
 
+# Global "Enums" for content of a map cell
+MAP_CELL_WALL=1
+MAP_CELL_CHEESE=2
+MAP_CELL_BONUS=3
+MAP_CELL_EMPTY=4
+
+__MAP_FULL=
+__MAP_CHEESE_COUNT=0
+__MAP_BONUS_COUNT=0
+
 ## Reads in a map file, stores in the FULL_MAP array
 # $1: path to file
-read-map() {
+map-read() {
 	filename="$1"
 
 	[[ -f "$filename" ]] || error "Map file not found: $filename"
 
-	mapfile FULL_MAP < "$filename"
+	mapfile __MAP_FULL < "$filename"
+	__MAP_CHEESE_COUNT=$(printf '%s' "${__MAP_FULL[@]}" | tr -cd '*' | wc -c)
+	__MAP_BONUS_COUNT=$(printf '%s' "${__MAP_FULL[@]}" | tr -cd 'o' | wc -c)
+
+	echo "__MAP_CHEESE_COUNT: $__MAP_CHEESE_COUNT" >> /tmp/pacman.log
+	echo "__MAP_BONUS_COUNT: $__MAP_BONUS_COUNT" >> /tmp/pacman.log
 }
 
+map-get-cell-type() {
+	local col="$1"
+	local row="$2"
+
+	local line="${__MAP_FULL[${row}]}"
+	local cell="${line:$col:1}"
+
+	result=
+	case $cell in
+		"*") result=$MAP_CELL_CHEESE;;
+		"o") result=$MAP_CELL_BONUS;;
+		" ") result=$MAP_CELL_EMPTY;;
+		*)	 result=$MAP_CELL_WALL;;
+	esac
+
+	echo "$result"
+}
+
+map-set-cell-content() {
+	local col="$1"
+	local row="$2"
+	local cell_content="$3"
+
+	local old_cell=$(map-get-cell-type "$col" "$row")
+	[[ "$old_cell" == "$MAP_CELL_CHEESE" ]] && ((__MAP_CHEESE_COUNT--))
+	[[ "$old_cell" == "$MAP_CELL_BONUS" ]] && ((__MAP_BONUS_COUNT--))
+
+	local line="${__MAP_FULL[${row}]}"
+	local replacement="${line:0:$col}${cell_content}${line:$((col+1))}"
+	__MAP_FULL[row]="$replacement"
+}
+
+map-is-clear() {
+	if (( __MAP_CHEESE_COUNT == 0 )); then
+		return 0
+	else
+		return 1
+	fi
+}
+
+map-print-map() {
+	local print_map=()
+	for line in "${__MAP_FULL[@]}"; do
+		# Pretty format cheeze
+		line=${line//"*"/"∙"}
+		# Pretty format walls
+		line=${line//"q"/"╔"}
+		line=${line//"w"/"╗"}
+		line=${line//"a"/"╚"}
+		line=${line//"s"/"╝"}
+		line=${line//"|"/"║"}
+		line=${line//"-"/"═"}
+
+		print_map+=("$line")
+	done
+	echo "${print_map[@]}"
+}
 
 export SOURCE_MAP=1
