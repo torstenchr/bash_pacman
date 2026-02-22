@@ -51,6 +51,26 @@ map-read() {
 
 	echo "__MAP_CHEESE_COUNT: $__MAP_CHEESE_COUNT" >> /tmp/pacman.log
 	echo "__MAP_BONUS_COUNT: $__MAP_BONUS_COUNT" >> /tmp/pacman.log
+
+	_map-prettify
+}
+
+_map-prettify() {
+	local new_map=()
+	for line in "${__MAP_FULL[@]}"; do
+		# Pretty format cheeze
+		line=${line//"*"/"∙"}
+		# Pretty format walls
+		line=${line//"q"/"╔"}
+		line=${line//"w"/"╗"}
+		line=${line//"a"/"╚"}
+		line=${line//"s"/"╝"}
+		line=${line//"|"/"║"}
+		line=${line//"-"/"═"}
+
+		new_map+=("$line")
+	done
+	__MAP_FULL=("${new_map[@]}")
 }
 
 map-get-cell-type() {
@@ -62,7 +82,7 @@ map-get-cell-type() {
 
 	result=
 	case $cell in
-		"*") result=$MAP_CELL_CHEESE;;
+		"∙") result=$MAP_CELL_CHEESE;;
 		"o") result=$MAP_CELL_BONUS;;
 		" ") result=$MAP_CELL_EMPTY;;
 		*)	 result=$MAP_CELL_WALL;;
@@ -94,21 +114,22 @@ map-is-clear() {
 }
 
 map-print-map() {
-	local print_map=()
-	for line in "${__MAP_FULL[@]}"; do
-		# Pretty format cheeze
-		line=${line//"*"/"∙"}
-		# Pretty format walls
-		line=${line//"q"/"╔"}
-		line=${line//"w"/"╗"}
-		line=${line//"a"/"╚"}
-		line=${line//"s"/"╝"}
-		line=${line//"|"/"║"}
-		line=${line//"-"/"═"}
+	# local print_map=()
+	# for line in "${__MAP_FULL[@]}"; do
+	# 	# Pretty format cheeze
+	# 	line=${line//"*"/"∙"}
+	# 	# Pretty format walls
+	# 	line=${line//"q"/"╔"}
+	# 	line=${line//"w"/"╗"}
+	# 	line=${line//"a"/"╚"}
+	# 	line=${line//"s"/"╝"}
+	# 	line=${line//"|"/"║"}
+	# 	line=${line//"-"/"═"}
 
-		print_map+=("$line")
-	done
-	echo "${print_map[@]}"
+	# 	print_map+=("$line")
+	# done
+	# echo "${print_map[@]}"
+	echo "${__MAP_FULL[@]}"
 }
 
 export SOURCE_MAP=1
