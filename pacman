@@ -61,6 +61,7 @@ source "$SCRIPT_DIR/lib/keyboard"
 source "$SCRIPT_DIR/lib/map"
 source "$SCRIPT_DIR/lib/statusbar"
 source "$SCRIPT_DIR/lib/timer"
+source "$SCRIPT_DIR/lib/ghosts"
 
 setup() {
 	screen-erase-all
@@ -106,7 +107,7 @@ handle-keyboard() {
 	KEY_READ=
 }
 
-update-pacman() {
+update-frame() {
 	## Measure time since last move, only move every PACMAN_MOVE_EVERY_US microsecs
 	local frame_time
 	frame_time=$(timer-get-elapse-time)
@@ -118,6 +119,11 @@ update-pacman() {
 	# Reset elapse timer
 	PACMAN_ELAPSE_TIMER=0
 
+	update-pacman
+	update-ghosts
+}
+
+update-pacman() {
 	# Store old position - needed when drawing to erase old pacman icon
 	PACMAN_OLD_POS=("${PACMAN_POS[@]}")
 
@@ -160,6 +166,10 @@ update-pacman() {
 	PACMAN_POS=("$PM_COL" "$PM_ROW")
 	# Update Icon for direction
 	PACMAN_ICON=${PACMAN_ICONS[$PACMAN_DIRECTION]}
+}
+
+update-ghosts() {
+	ghosts-update
 }
 
 update-map() {
@@ -213,7 +223,7 @@ main() {
 		update-keyboard
 		handle-keyboard
 
-		update-pacman
+		update-frame
 		update-map
 		print-map
 
@@ -225,8 +235,8 @@ main() {
 		((i=i+1))
 	done;
 
-	total_time=$(timer-stop)
-	fps=$(( (i * 1000 * 1000) / total_time ))
+	local total_time=$(timer-stop)
+	local fps=$(( (i * 1000 * 1000) / total_time ))
 	echo "Total Frames: $i | Total Time: ${total_time}us | Avg. FPS: $fps"
 
 	teardown

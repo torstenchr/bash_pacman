@@ -24,32 +24,59 @@
 
 # PRAGMA: Use once and only as sourced
 if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The utils can only be sourced!"; exit 1; fi
-if [ -n "$SOURCE_MAP" ]; then return; fi
+if [ -n "$SOURCE_GHOSTS" ]; then return; fi
 
-source "$SCRIPT_DIR/lib/utils"
+source "$SCRIPT_DIR/lib/map"
 
-# Global "Enums" for content of a map cell
-MAP_CELL_WALL=1
-MAP_CELL_CHEESE=2
-MAP_CELL_BONUS=3
-MAP_CELL_EMPTY=4
+__GHOST_POSITION=(14 14)
+__GHOST_OLD_POSITION=
+__GHOST_DIRECTION="up"
+__GHOST_ICON="#"
 
-__MAP_FULL=
-__MAP_CHEESE_COUNT=0
-__MAP_BONUS_COUNT=0
+_move-ghost() {
+	# Store old position - needed when drawing to erase old pacman icon
+	__GHOST_OLD_POSITION=("${__GHOST_POSITION[@]}")
 
-__MAP_CELL_CHEESE="."
-__MAP_CELL_BONUS="o"
-__MAP_CELL_EMPTY=" "
-__MAP_CELL_TL="╔"
-__MAP_CELL_TR="╗"
-__MAP_CELL_BL="╚"
-__MAP_CELL_BR="╝"
-__MAP_CELL_WALL_VERT="║"
-__MAP_CELL_WALL_HORZ="═"
+	# Update position according to direction
+	local COL="${__GHOST_POSITION[0]}"
+	local ROW="${__GHOST_POSITION[1]}"
+	case $__GHOST_DIRECTION in
+		left)  	((COL-=1));;
+		right) 	((COL+=1));;
+		up)		((ROW-=1));;
+		down)	((ROW+=1));;
+	esac
+	# Wrap around edge of maps, ensures both under and over shoot is kept within maps size
+    # TODO: Read MAP width/height
+	((COL = (COL + 28) % 28))
+	((ROW = (ROW + 31) % 31))
 
-## Source in implementation that we want to try
-#source "$SCRIPT_DIR/lib/map-a"
-source "$SCRIPT_DIR/lib/map-b"
+	## Handle collision with walls
+	local cell_type=$(map-get-cell-type $COL $ROW)
+	case "$cell_type" in
+		"$MAP_CELL_WALL")
+			# Colliding with wall, change direction
+			return
+			;;
+	esac
 
-export SOURCE_MAP=1
+	# Update position
+	__GHOST_POSITION=("$COL" "$ROW")
+}
+
+ghosts-update() {
+    local col row
+
+	col="${__GHOST_POSITION[0]}"
+	row="${__GHOST_POSITION[1]}"
+    map-get-cell-content "$col" "$row" "$__GHOST_ICON"
+
+    _move-ghost
+
+	col="${__GHOST_POSITION[0]}"
+	row="${__GHOST_POSITION[1]}"
+    map-set-cell-content "$col" "$row" "$__GHOST_ICON"
+}
+
+
+export SOURCE_GHOSTS=1
