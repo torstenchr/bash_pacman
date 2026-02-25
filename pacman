@@ -75,11 +75,8 @@ teardown() {
 
 update-keyboard() {
 	local new_key
-	read -rs -u 3 -t .001 new_key
-
-	if [[ -n $new_key ]]; then
-		KEY_READ=$new_key
-	fi
+	read -rs -u "$pipefd" -t .001 new_key
+	[[ -n $new_key ]] && KEY_READ=$new_key
 }
 
 handle-keyboard() {
@@ -103,11 +100,7 @@ handle-keyboard() {
 			PACMAN_DIRECTION="down"
 			;;
 		[1-9])
-			if [[ -z ${DEBUG_FLAGS[$KEY_READ]} ]]; then
-				DEBUG_FLAGS["$KEY_READ"]="1"
-			else
-				DEBUG_FLAGS["$KEY_READ"]=""
-			fi
+			[[ -z ${DEBUG_FLAGS[$KEY_READ]} ]] && DEBUG_FLAGS["$KEY_READ"]="1" || DEBUG_FLAGS["$KEY_READ"]=""
 			;;
 	esac
 	KEY_READ=
@@ -136,6 +129,7 @@ update-pacman() {
 		right) 	((PM_COL+=1));;
 		up)		((PM_ROW-=1));;
 		down)	((PM_ROW+=1));;
+		*)		return;; # On start pacman doesn't have a direction
 	esac
 	# Wrap around edge of maps, ensures both under and over shoot is kept within maps size
 	((PM_COL = (PM_COL + 28) % 28))
@@ -162,10 +156,6 @@ update-pacman() {
 			;;
 	esac
 
-	if [[ "$cell" == "$MAP_CELL_WALL" ]]; then
-		return
-	fi
-
 	# Update position
 	PACMAN_POS=("$PM_COL" "$PM_ROW")
 	# Update Icon for direction
@@ -184,11 +174,7 @@ update-map() {
 }
 
 toggle-debug() {
-    if [[ -z $DEBUG ]]; then
-        DEBUG=1
-    else
-        unset DEBUG
-    fi
+    [[ -z $DEBUG ]] && DEBUG=1 || unset DEBUG
 
 	# Toggle FPS debugging
 	timer-debug
@@ -208,6 +194,8 @@ update-statusbar() {
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[1]} ]] && content="$content | Avg. FPS: $fps"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[2]} ]] && content="$content | Direction: $PACMAN_DIRECTION"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[3]} ]] && content="$content | Cheese count: $__MAP_CHEESE_COUNT"
+	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[4]} ]] && content="$content | POS: ${PACMAN_POS[0]},${PACMAN_POS[1]}"
+	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[5]} ]] && content="$content | Cell Content: $(map-get-cell-type ${PACMAN_POS[0]} ${PACMAN_POS[1]})"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[9]} ]] && content="$content | Clock: $clock"
 
 	statusbar-update "$content"
@@ -229,9 +217,7 @@ main() {
 		update-map
 		print-map
 
-		if map-is-clear; then
-			RUNNING=""
-		fi
+		map-is-clear && RUNNING=""
 
 		update-statusbar
 

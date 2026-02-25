@@ -58,5 +58,10 @@ queue-pop() {
     echo "$result"
 }
 
+queue-size() {
+    local -n queue="$1"
+    echo "${#queue[@]}"
+}
+
 
 SOURCE_QUEUE=1
