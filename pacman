@@ -68,6 +68,8 @@ setup() {
 	screen-hide-cursor
 	statusbar-setup
 	keyboard-setup
+
+	echo "" > pacman.log
 }
 
 teardown() {
@@ -217,7 +219,7 @@ main() {
 	map-read "$SCRIPT_DIR/maps/map1"
 
 	# GAME LOOP
-	i=0
+	local i=0
 	timer-start
 	while [[ -n $RUNNING ]]; do
 		update-keyboard
@@ -243,3 +245,23 @@ main() {
 }
 
 main
+
+### [torsten@rainier:/home/torsten/Coding/torstenchr/bash_pacman]$ ./analyse.py trace.log 
+### Total wall time in log: 217471.625 ms
+### Function, Total_ms, Percent, Calls, Avg_ms_per_call
+### map-get-cell-type,27693.698,12.73%,7888,3.511
+### map-set-cell-content,25898.499,11.91%,7402,3.499
+### map-print-map,22153.933,10.19%,6659,3.327
+### _map-print-full,17626.689,8.11%,5392,3.269
+### map-get-cell-content,16949.421,7.79%,4928,3.439
+### screen-pos-at,16259.362,7.48%,4914,3.309
+### _map-transform,11664.346,5.36%,3750,3.110
+### update-statusbar,10045.483,4.62%,2964,3.389
+### main,8791.436,4.04%,2480,3.545
+### _move-ghost,8763.776,4.03%,2706,3.239
+### update-frame,6981.022,3.21%,1974,3.536
+### ghosts-update,6659.562,3.06%,1968,3.384
+### screen_write_to_reserved_line,6623.878,3.05%,1976,3.352
+### statusbar-update,5765.529,2.65%,1729,3.335
+### update-map,5104.128,2.35%,1482,3.444
+### [torsten@rainier:/home/torsten/Coding/t

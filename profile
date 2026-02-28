@@ -7,4 +7,4 @@ set -x
 bash -x -- "$@"
 
 set +x
-exec 2>&3 3>&-
+exec 2>&3 3>&- 

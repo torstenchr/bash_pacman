@@ -33,43 +33,64 @@ __GHOST_OLD_POSITION=
 __GHOST_DIRECTION="up"
 __GHOST_ICON="#"
 
+_calc_new_pos() {
+	local col="$1"
+	local row="$2"
+	local direction="$3"
+
+	echo "pos: $col,$row | direction: $direction" >> pacman.log
+
+	# Update position according to direction
+	case $direction in
+		left)  	((col-=1));;
+		right) 	((col+=1));;
+		up)		((row-=1));;
+		down)	((row+=1));;
+	esac
+	# Wrap around edge of maps, ensures both under and over shoot is kept within maps size
+    # TODO: Read MAP width/height
+	((col = (col + 28) % 28))
+	((row = (row + 31) % 31))
+
+	pos=("$col" "$row")
+	echo "${pos[@]}"
+}
+
 _move-ghost() {
 	# Store old position - needed when drawing to erase old pacman icon
 	__GHOST_OLD_POSITION=("${__GHOST_POSITION[@]}")
 
-	# Update position according to direction
-	local COL="${__GHOST_POSITION[0]}"
-	local ROW="${__GHOST_POSITION[1]}"
-	case $__GHOST_DIRECTION in
-		left)  	((COL-=1));;
-		right) 	((COL+=1));;
-		up)		((ROW-=1));;
-		down)	((ROW+=1));;
-	esac
-	# Wrap around edge of maps, ensures both under and over shoot is kept within maps size
-    # TODO: Read MAP width/height
-	((COL = (COL + 28) % 28))
-	((ROW = (ROW + 31) % 31))
+	local pos=( $(_calc_new_pos "${__GHOST_POSITION[@]}" "$__GHOST_DIRECTION") )
+	local col="${pos[0]}"
+	local row="${pos[1]}"
 
 	## Handle collision with walls
-	local cell_type=$(map-get-cell-type $COL $ROW)
-	case "$cell_type" in
-		"$MAP_CELL_WALL")
-			# Colliding with wall, change direction
-			return
-			;;
-	esac
+	local coin=$(( RANDOM % 2 ))
+	echo "coin: $coin" >> pacman.log
+	local cell_type=$(map-get-cell-type "$col" "$row")
+	[[ "$cell_type" == "$MAP_CELL_WALL" ]] &&
+		case "$__GHOST_DIRECTION" in
+			"up" | "down")
+				[[ $coin == 0 ]] && __GHOST_DIRECTION="left" || __GHOST_DIRECTION="right"
+				_move-ghost
+				return
+				;;
+			"left" | "right")
+				[[ $coin == 0 ]] && __GHOST_DIRECTION="up" || __GHOST_DIRECTION="down"
+				_move-ghost
+				return
+				;;
+		esac
 
 	# Update position
-	__GHOST_POSITION=("$COL" "$ROW")
+	__GHOST_POSITION=("$col" "$row")
 }
 
 ghosts-update() {
     local col row
-
 	col="${__GHOST_POSITION[0]}"
 	row="${__GHOST_POSITION[1]}"
-    map-get-cell-content "$col" "$row" "$__GHOST_ICON"
+    map-set-cell-content "$col" "$row" " "
 
     _move-ghost
 
