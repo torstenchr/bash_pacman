@@ -23,7 +23,7 @@
 # SOFTWARE.
 
 # PRAGMA: Use once and only as sourced
-if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The utils can only be sourced!"; exit 1; fi
+if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The file can only be sourced!"; exit 1; fi
 if [ -n "$SOURCE_GHOSTS" ]; then return; fi
 
 source "$SCRIPT_DIR/lib/map"

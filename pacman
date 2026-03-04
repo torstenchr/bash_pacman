@@ -36,21 +36,12 @@
 SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]})"
 # Last registered key from keyboard
 KEY_READ=
-# PACMAN stuff
-PACMAN_POS=(14 23)
-declare -A PACMAN_ICONS
-PACMAN_ICONS[left]="Ↄ"
-PACMAN_ICONS[right]="C"
-PACMAN_ICONS[up]="U"
-PACMAN_ICONS[down]="∩"
-PACMAN_ICON=${PACMAN_ICONS[right]}
-PACMAN_EMPTY_ICON=" "
-PACMAN_DIRECTION=""
-PACMAN_ELAPSE_TIMER=0
-PACMAN_MOVE_EVERY_MS=100  # Move every 0.5 second
-PACMAN_MOVE_EVERY_US=$(( PACMAN_MOVE_EVERY_MS * 1000 ))
 
 # Game loop variables
+FRAME_TIMER=0
+FRAME_UPDATE_INTERVAL=100  # Move every 0.1 second
+FRAME_UPDATE_INTERVAL_US=$(( FRAME_UPDATE_INTERVAL * 1000 ))
+
 RUNNING=1
 DEBUG=
 DEBUG_FLAGS=()
@@ -61,6 +52,7 @@ source "$SCRIPT_DIR/lib/map"
 source "$SCRIPT_DIR/lib/statusbar"
 source "$SCRIPT_DIR/lib/timer"
 source "$SCRIPT_DIR/lib/ghosts"
+source "$SCRIPT_DIR/lib/pacman"
 
 setup() {
 	screen-erase-all
@@ -75,13 +67,18 @@ teardown() {
 	screen-show-cursor
 }
 
+toggle-debug() {
+    [[ -z $DEBUG ]] && DEBUG=1 || unset DEBUG
+
+	# Toggle FPS debugging
+	timer-debug
+}
+
 update-keyboard() {
 	local new_key
 	read -rs -u "$pipefd" -t .001 new_key
 	[[ -n $new_key ]] && KEY_READ=$new_key
-}
 
-handle-keyboard() {
 	case $KEY_READ in
 		"key-home")
 			toggle-debug
@@ -90,16 +87,16 @@ handle-keyboard() {
 			unset RUNNING
 			;;
 		"key-left" | "a")
-			PACMAN_DIRECTION="left"
+			pacman-set-direction "left"
 			;;
 		"key-right" | "d")
-			PACMAN_DIRECTION="right"
+			pacman-set-direction "right"
 			;;
 		"key-up" | "w")
-			PACMAN_DIRECTION="up"
+			pacman-set-direction "up"
 			;;
 		"key-down" | "s")
-			PACMAN_DIRECTION="down"
+			pacman-set-direction "down"
 			;;
 		[1-9])
 			[[ -z ${DEBUG_FLAGS[$KEY_READ]} ]] && DEBUG_FLAGS["$KEY_READ"]="1" || DEBUG_FLAGS["$KEY_READ"]=""
@@ -109,71 +106,23 @@ handle-keyboard() {
 }
 
 update-frame() {
-	## Measure time since last move, only move every PACMAN_MOVE_EVERY_US microsecs
+	## Measure time since last move, only move every FRAME_UPDATE_INTERVAL_US microsecs
 	local frame_time
 	frame_time=$(timer-get-elapse-time)
-	PACMAN_ELAPSE_TIMER=$(( PACMAN_ELAPSE_TIMER + frame_time ))
+	FRAME_TIMER=$(( FRAME_TIMER + frame_time ))
 
 	# No movement yet - exit the function
-	[[ $PACMAN_ELAPSE_TIMER -lt $PACMAN_MOVE_EVERY_US ]] && return
+	[[ $FRAME_TIMER -lt $FRAME_UPDATE_INTERVAL_US ]] && return
 
 	# Reset elapse timer
-	PACMAN_ELAPSE_TIMER=0
+	FRAME_TIMER=0
 
-	update-pacman
-	update-ghosts
-}
-
-move-pacman() {
-	# Update position according to direction
-	local new_pos=( $(map-new-position "${PACMAN_POS[@]}" "$PACMAN_DIRECTION") )
-
-	## Handle collision with walls
-	local cell_type=$(map-get-cell-type "${new_pos[@]}")
-	case "$cell_type" in
-		"$MAP_CELL_WALL")
-			# Colliding with wall, do nothing
-			return
-			;;
-		"$MAP_CELL_CHEESE")
-			# Hitting Cheese - score a point
-			((SCORE+=1))
-			;;
-		"$MAP_CELL_BONUS")
-			# Hitting a bonus - activate bonus period
-			;;
-		"$MAP_CELL_EMPTY")
-			# Do nothing, just move
-			;;
-	esac
-
-	# Update position
-	PACMAN_POS=("${new_pos[@]}")
-	# Update Icon for direction
-	[[ -n $PACMAN_DIRECTION ]] && PACMAN_ICON=${PACMAN_ICONS[$PACMAN_DIRECTION]}
-}
-
-update-ghosts() {
+	# Game updates on every move
+	pacman-update
 	ghosts-update
 }
 
-update-pacman() {
-	# Erase old position of pacman
-	map-set-cell-content "${PACMAN_POS[@]}" "$PACMAN_EMPTY_ICON"
-	# Move pacman according to keyboard
-	move-pacman
-	# Set new position icon
-	map-set-cell-content "${PACMAN_POS[@]}" "$PACMAN_ICON"
-}
-
-toggle-debug() {
-    [[ -z $DEBUG ]] && DEBUG=1 || unset DEBUG
-
-	# Toggle FPS debugging
-	timer-debug
-}
-
-print-map() {
+update-screen() {
 	screen-pos-home
 	map-print-map
 }
@@ -187,8 +136,8 @@ update-statusbar() {
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[1]} ]] && content="$content | Avg. FPS: $fps"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[2]} ]] && content="$content | Direction: $PACMAN_DIRECTION"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[3]} ]] && content="$content | Cheese count: $__MAP_CHEESE_COUNT"
-	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[4]} ]] && content="$content | POS: ${PACMAN_POS[0]},${PACMAN_POS[1]}"
-	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[5]} ]] && content="$content | Cell Content: $(map-get-cell-type ${PACMAN_POS[0]} ${PACMAN_POS[1]})"
+	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[4]} ]] && content="$content | POS: ${__PACMAN_POS[0]},${__PACMAN_POS[1]}"
+	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[5]} ]] && content="$content | Cell Content: $(map-get-cell-type ${__PACMAN_POS[0]} ${__PACMAN_POS[1]})"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[9]} ]] && content="$content | Clock: $clock"
 
 	statusbar-update "$content"
@@ -197,26 +146,37 @@ update-statusbar() {
 main() {
 	setup
 
+	# Read in only map I have for now
 	map-read "$SCRIPT_DIR/maps/map1"
 
 	# GAME LOOP
 	local i=0
 	timer-start
+
+	# Game loop continues until RUNNING is set!
 	while [[ -n $RUNNING ]]; do
+		# Input update
 		update-keyboard
-		handle-keyboard
 
+		# Game update
 		update-frame
-		print-map
 
-		map-is-clear && RUNNING=""
+		# Output update
+		update-screen
 
+		# Update user friend statusbar
 		update-statusbar
 
+		# Game done?
+		map-is-clear && RUNNING=""
+
 		timer-tick
+
+		# Frame count
 		((i=i+1))
 	done;
 
+	# total time is recorded in number of microseconds since timer started
 	local total_time=$(timer-stop)
 	local fps=$(( (i * 1000 * 1000) / total_time ))
 	screen-pos-at 0 32
@@ -226,23 +186,3 @@ main() {
 }
 
 main
-
-### [torsten@rainier:/home/torsten/Coding/torstenchr/bash_pacman]$ ./analyse.py trace.log 
-### Total wall time in log: 217471.625 ms
-### Function, Total_ms, Percent, Calls, Avg_ms_per_call
-### map-get-cell-type,27693.698,12.73%,7888,3.511
-### map-set-cell-content,25898.499,11.91%,7402,3.499
-### map-print-map,22153.933,10.19%,6659,3.327
-### _map-print-full,17626.689,8.11%,5392,3.269
-### map-get-cell-content,16949.421,7.79%,4928,3.439
-### screen-pos-at,16259.362,7.48%,4914,3.309
-### _map-transform,11664.346,5.36%,3750,3.110
-### update-statusbar,10045.483,4.62%,2964,3.389
-### main,8791.436,4.04%,2480,3.545
-### _move-ghost,8763.776,4.03%,2706,3.239
-### update-frame,6981.022,3.21%,1974,3.536
-### ghosts-update,6659.562,3.06%,1968,3.384
-### screen_write_to_reserved_line,6623.878,3.05%,1976,3.352
-### statusbar-update,5765.529,2.65%,1729,3.335
-### update-map,5104.128,2.35%,1482,3.444
-### [torsten@rainier:/home/torsten/Coding/t

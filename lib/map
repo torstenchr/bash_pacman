@@ -23,7 +23,7 @@
 # SOFTWARE.
 
 # PRAGMA: Use once and only as sourced
-if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The utils can only be sourced!"; exit 1; fi
+if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The file can only be sourced!"; exit 1; fi
 if [ -n "$SOURCE_MAP" ]; then return; fi
 
 source "$SCRIPT_DIR/lib/utils"
@@ -36,6 +36,8 @@ MAP_CELL_WALL=1
 MAP_CELL_CHEESE=2
 MAP_CELL_BONUS=3
 MAP_CELL_EMPTY=4
+MAP_CELL_GHOST=5
+MAP_CELL_PACMAN=6
 
 
 ## Anything below here is considered "private"
@@ -240,6 +242,7 @@ _map-print-full() {
 	__map_is_printet=1
 }
 
+# Called from the game loop to print out the map to screen
 map-print-map() {
 	if [[ -z $__map_is_printet ]]; then
 		_map-print-full

@@ -39,6 +39,11 @@ fatal() {
     error "$1"
 }
 
+log() {
+    msg="$1"
+    echo "$msg" >> "$SCRIPT_DIR/pacman.log"
+}
+
 ## Create a temporary fifi pipe
 # $OUTPUT: path of create pipe
 mktemp_fifo() {
