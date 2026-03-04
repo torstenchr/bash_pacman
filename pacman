@@ -37,8 +37,7 @@ SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]})"
 # Last registered key from keyboard
 KEY_READ=
 # PACMAN stuff
-PACMAN_POS=(4 14)
-PACMAN_OLD_POS=(4 14)
+PACMAN_POS=(14 23)
 declare -A PACMAN_ICONS
 PACMAN_ICONS[left]="Ↄ"
 PACMAN_ICONS[right]="C"
@@ -125,26 +124,12 @@ update-frame() {
 	update-ghosts
 }
 
-update-pacman() {
-	# Store old position - needed when drawing to erase old pacman icon
-	PACMAN_OLD_POS=("${PACMAN_POS[@]}")
-
+move-pacman() {
 	# Update position according to direction
-	local PM_COL="${PACMAN_POS[0]}"
-	local PM_ROW="${PACMAN_POS[1]}"
-	case $PACMAN_DIRECTION in
-		left)  	((PM_COL-=1));;
-		right) 	((PM_COL+=1));;
-		up)		((PM_ROW-=1));;
-		down)	((PM_ROW+=1));;
-		*)		return;; # On start pacman doesn't have a direction
-	esac
-	# Wrap around edge of maps, ensures both under and over shoot is kept within maps size
-	((PM_COL = (PM_COL + 28) % 28))
-	((PM_ROW = (PM_ROW + 31) % 31))
+	local new_pos=( $(map-new-position "${PACMAN_POS[@]}" "$PACMAN_DIRECTION") )
 
 	## Handle collision with walls
-	local cell_type=$(map-get-cell-type $PM_COL $PM_ROW)
+	local cell_type=$(map-get-cell-type "${new_pos[@]}")
 	case "$cell_type" in
 		"$MAP_CELL_WALL")
 			# Colliding with wall, do nothing
@@ -155,9 +140,7 @@ update-pacman() {
 			((SCORE+=1))
 			;;
 		"$MAP_CELL_BONUS")
-			# Hitting a bonus - score a point AND activate bonus period
-			((SCORE+=1))
-			# TODO: Start Bonus Period
+			# Hitting a bonus - activate bonus period
 			;;
 		"$MAP_CELL_EMPTY")
 			# Do nothing, just move
@@ -165,24 +148,22 @@ update-pacman() {
 	esac
 
 	# Update position
-	PACMAN_POS=("$PM_COL" "$PM_ROW")
+	PACMAN_POS=("${new_pos[@]}")
 	# Update Icon for direction
-	PACMAN_ICON=${PACMAN_ICONS[$PACMAN_DIRECTION]}
+	[[ -n $PACMAN_DIRECTION ]] && PACMAN_ICON=${PACMAN_ICONS[$PACMAN_DIRECTION]}
 }
 
 update-ghosts() {
 	ghosts-update
 }
 
-update-map() {
+update-pacman() {
 	# Erase old position of pacman
-	local PM_OLD_COL="${PACMAN_OLD_POS[0]}"
-	local PM_OLD_ROW="${PACMAN_OLD_POS[1]}"
-	map-set-cell-content "$PM_OLD_COL" "$PM_OLD_ROW" "$PACMAN_EMPTY_ICON"
-
-	local PM_COL="${PACMAN_POS[0]}"
-	local PM_ROW="${PACMAN_POS[1]}"
-	map-set-cell-content "$PM_COL" "$PM_ROW" "$PACMAN_ICON"
+	map-set-cell-content "${PACMAN_POS[@]}" "$PACMAN_EMPTY_ICON"
+	# Move pacman according to keyboard
+	move-pacman
+	# Set new position icon
+	map-set-cell-content "${PACMAN_POS[@]}" "$PACMAN_ICON"
 }
 
 toggle-debug() {
@@ -226,7 +207,6 @@ main() {
 		handle-keyboard
 
 		update-frame
-		update-map
 		print-map
 
 		map-is-clear && RUNNING=""
@@ -239,6 +219,7 @@ main() {
 
 	local total_time=$(timer-stop)
 	local fps=$(( (i * 1000 * 1000) / total_time ))
+	screen-pos-at 0 32
 	echo "Total Frames: $i | Total Time: ${total_time}us | Avg. FPS: $fps"
 
 	teardown
