@@ -55,8 +55,8 @@ source "$SCRIPT_DIR/lib/ghosts"
 source "$SCRIPT_DIR/lib/pacman"
 
 setup() {
-	screen-erase-all
-	screen-hide-cursor
+	screen::erase-all
+	screen::hide-cursor
 	statusbar-setup
 	keyboard::setup
 
@@ -64,7 +64,7 @@ setup() {
 }
 
 teardown() {
-	screen-show-cursor
+	screen::show-cursor
 }
 
 toggle-debug() {
@@ -123,7 +123,7 @@ update-frame() {
 }
 
 update-screen() {
-	screen-pos-home
+	screen::pos-home
 	map::print-map
 }
 
@@ -179,7 +179,7 @@ main() {
 	# total time is recorded in number of microseconds since timer started
 	local total_time=$(timer-stop)
 	local fps=$(( (i * 1000 * 1000) / total_time ))
-	screen-pos-at 0 32
+	screen::pos-at 0 32
 	echo "Total Frames: $i | Total Time: ${total_time}us | Avg. FPS: $fps"
 
 	teardown

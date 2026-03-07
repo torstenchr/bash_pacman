@@ -235,7 +235,7 @@ map::_print-full() {
 	for ((i=0; i<${#bmap[@]}; i++)); do
 		col=$((i % __MAP_WIDTH))
 		row=$((i / __MAP_WIDTH))
-		screen-pos-at $((col + 1)) $((row + 1))
+		screen::pos-at $((col + 1)) $((row + 1))
 		printf '%s' "${bmap[$i]}"
 	done
 	
@@ -256,7 +256,7 @@ map::print-map() {
 		col=${invalidatequeue[$i]}
 		row=${invalidatequeue[$((i+1))]}
 
-		screen-pos-at $((col + 1)) $((row + 1))
+		screen::pos-at $((col + 1)) $((row + 1))
 		cell="${bmap[$((row * __MAP_WIDTH + col))]}"
 		printf '%s' "$cell"
 	done
