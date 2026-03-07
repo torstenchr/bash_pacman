@@ -55,23 +55,23 @@ source "$SCRIPT_DIR/lib/ghosts"
 source "$SCRIPT_DIR/lib/pacman"
 
 setup() {
-	screen-erase-all
-	screen-hide-cursor
-	statusbar-setup
-	keyboard-setup
+	screen::erase-all
+	screen::hide-cursor
+	statusbar::setup
+	keyboard::setup
 
 	echo "" > pacman.log
 }
 
 teardown() {
-	screen-show-cursor
+	screen::show-cursor
 }
 
 toggle-debug() {
     [[ -z $DEBUG ]] && DEBUG=1 || unset DEBUG
 
 	# Toggle FPS debugging
-	timer-debug
+	timer::debug
 }
 
 update-keyboard() {
@@ -87,16 +87,16 @@ update-keyboard() {
 			unset RUNNING
 			;;
 		"key-left" | "a")
-			pacman-set-direction "left"
+			pacman::set-direction "left"
 			;;
 		"key-right" | "d")
-			pacman-set-direction "right"
+			pacman::set-direction "right"
 			;;
 		"key-up" | "w")
-			pacman-set-direction "up"
+			pacman::set-direction "up"
 			;;
 		"key-down" | "s")
-			pacman-set-direction "down"
+			pacman::set-direction "down"
 			;;
 		[1-9])
 			[[ -z ${DEBUG_FLAGS[$KEY_READ]} ]] && DEBUG_FLAGS["$KEY_READ"]="1" || DEBUG_FLAGS["$KEY_READ"]=""
@@ -108,7 +108,7 @@ update-keyboard() {
 update-frame() {
 	## Measure time since last move, only move every FRAME_UPDATE_INTERVAL_US microsecs
 	local frame_time
-	frame_time=$(timer-get-elapse-time)
+	frame_time=$(timer::get-elapse-time)
 	FRAME_TIMER=$(( FRAME_TIMER + frame_time ))
 
 	# No movement yet - exit the function
@@ -118,17 +118,17 @@ update-frame() {
 	FRAME_TIMER=0
 
 	# Game updates on every move
-	pacman-update
-	ghosts-update
+	pacman::update
+	ghosts::update
 }
 
 update-screen() {
-	screen-pos-home
-	map-print-map
+	screen::pos-home
+	map::print-map
 }
 
 update-statusbar() {
-	local fps=$(timer-get-fps)
+	local fps=$(timer::get-fps)
 	local clock
 	printf -v clock '%(%Y-%m-%d %H:%M:%S)T\n' -1
 
@@ -137,21 +137,21 @@ update-statusbar() {
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[2]} ]] && content="$content | Direction: $PACMAN_DIRECTION"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[3]} ]] && content="$content | Cheese count: $__MAP_CHEESE_COUNT"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[4]} ]] && content="$content | POS: ${__PACMAN_POS[0]},${__PACMAN_POS[1]}"
-	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[5]} ]] && content="$content | Cell Content: $(map-get-cell-type ${__PACMAN_POS[0]} ${__PACMAN_POS[1]})"
+	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[5]} ]] && content="$content | Cell Content: $(map::get-cell-type ${__PACMAN_POS[0]} ${__PACMAN_POS[1]})"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[9]} ]] && content="$content | Clock: $clock"
 
-	statusbar-update "$content"
+	statusbar::update "$content"
 }
 
 main() {
 	setup
 
 	# Read in only map I have for now
-	map-read "$SCRIPT_DIR/maps/map1"
+	map::read "$SCRIPT_DIR/maps/map1"
 
 	# GAME LOOP
 	local i=0
-	timer-start
+	timer::start
 
 	# Game loop continues until RUNNING is set!
 	while [[ -n $RUNNING ]]; do
@@ -168,18 +168,18 @@ main() {
 		update-statusbar
 
 		# Game done?
-		map-is-clear && RUNNING=""
+		map::is-clear && RUNNING=""
 
-		timer-tick
+		timer::tick
 
 		# Frame count
 		((i=i+1))
 	done;
 
 	# total time is recorded in number of microseconds since timer started
-	local total_time=$(timer-stop)
+	local total_time=$(timer::stop)
 	local fps=$(( (i * 1000 * 1000) / total_time ))
-	screen-pos-at 0 32
+	screen::pos-at 0 32
 	echo "Total Frames: $i | Total Time: ${total_time}us | Avg. FPS: $fps"
 
 	teardown

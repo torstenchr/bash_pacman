@@ -33,7 +33,7 @@ source "$SCRIPT_DIR/lib/utils"
 ## each their own library without knowledge of eachother.
 # $1: Function to call
 # $2: Name of trap (like regular bash trap, eg. WINCH, EXIT, ...)
-trap_add() {
+trap::add() {
     trap_add_cmd=$1; shift || fatal "${FUNCNAME} usage error"
     for trap_add_name in "$@"; do
         trap -- "$(

@@ -78,7 +78,7 @@ __MAP_HEIGHT=0
 ## Reads in a map file to internal structures.
 # Map must be formatted according to specified syntax
 # $1: path to file
-map-read() {
+map::read() {
 	local filename="$1"
 
 	[[ -f "$filename" ]] || error "Map file not found: $filename"
@@ -91,22 +91,22 @@ map-read() {
 	echo "__MAP_CHEESE_COUNT: $__MAP_CHEESE_COUNT" >> pacman.log
 	echo "__MAP_BONUS_COUNT: $__MAP_BONUS_COUNT" >> pacman.log
 
-	_map-get-dimentions
-	_map-prettify
-    _map-transform
+	map::_get-dimentions
+	map::_prettify
+    map::_transform
 }
 
-_map-get-dimentions() {
+map::_get-dimentions() {
 	local line
 
 	__MAP_HEIGHT="${#__MAP_FULL[@]}"
 	for line in "${__MAP_FULL[@]}"; do
-		__MAP_WIDTH=$(math-max "$__MAP_WIDTH" ${#line})
+		__MAP_WIDTH=$(math::max "$__MAP_WIDTH" ${#line})
 	done
 	echo "Height: $__MAP_HEIGHT | Width: $__MAP_WIDTH" >> pacman.log
 }
 
-_map-transform() {
+map::_transform() {
     local row col
 	for ((row=0; row<${#__MAP_FULL[@]}; row++)); do
         local line=${__MAP_FULL[row]}
@@ -118,7 +118,7 @@ _map-transform() {
 }
 
 
-_map-prettify() {
+map::_prettify() {
 	local new_map=()
 	local line
 	for line in "${__MAP_FULL[@]}"; do
@@ -144,7 +144,7 @@ _map-prettify() {
 # $1: col
 # $2: row
 # $OUT: content of the cell
-map-get-cell-content() {
+map::get-cell-content() {
 	local col="$1"
 	local row="$2"
 
@@ -157,12 +157,12 @@ map-get-cell-content() {
 # $1: col
 # $2: row
 # $OUT: cell type
-map-get-cell-type() {
+map::get-cell-type() {
 	local col="$1"
 	local row="$2"
 	local result
 
-	local cell=$(map-get-cell-content "$col" "$row")
+	local cell=$(map::get-cell-content "$col" "$row")
 	case $cell in
 		"$__MAP_CELL_CHEESE") result=$MAP_CELL_CHEESE;;
 		"$__MAP_CELL_BONUS")  result=$MAP_CELL_BONUS;;
@@ -177,12 +177,12 @@ map-get-cell-type() {
 # $1: col
 # $2: row
 # $3: new cell content
-map-set-cell-content() {
+map::set-cell-content() {
 	local col="$1"
 	local row="$2"
 	local cell_content="$3"
 
-	local old_cell=$(map-get-cell-type "$col" "$row")
+	local old_cell=$(map::get-cell-type "$col" "$row")
 
 	[[ "$old_cell" == "$MAP_CELL_CHEESE" ]] && ((__MAP_CHEESE_COUNT--))
 	[[ "$old_cell" == "$MAP_CELL_BONUS" ]] && ((__MAP_BONUS_COUNT--))
@@ -195,7 +195,7 @@ map-set-cell-content() {
 
 ## Check if all cheese have been eaten on the map
 # $RETURN: 0 if true, 1 if false (not all cheese are left)
-map-is-clear() {
+map::is-clear() {
 	if (( __MAP_CHEESE_COUNT == 0 )); then
 		return 0
 	else
@@ -208,7 +208,7 @@ map-is-clear() {
 # $1: Column
 # $2: Row
 # $3: Direction (left, right, up or down)
-map-new-position() {
+map::new-position() {
 	local col="$1"
 	local row="$2"
 	local direction="$3"
@@ -229,13 +229,13 @@ map-new-position() {
 	echo "${pos[@]}"
 }
 
-_map-print-full() {
+map::_print-full() {
 	local i col row
 
 	for ((i=0; i<${#bmap[@]}; i++)); do
 		col=$((i % __MAP_WIDTH))
 		row=$((i / __MAP_WIDTH))
-		screen-pos-at $((col + 1)) $((row + 1))
+		screen::pos-at $((col + 1)) $((row + 1))
 		printf '%s' "${bmap[$i]}"
 	done
 	
@@ -243,9 +243,9 @@ _map-print-full() {
 }
 
 # Called from the game loop to print out the map to screen
-map-print-map() {
+map::print-map() {
 	if [[ -z $__map_is_printet ]]; then
-		_map-print-full
+		map::_print-full
 		return
 	fi
 
@@ -256,7 +256,7 @@ map-print-map() {
 		col=${invalidatequeue[$i]}
 		row=${invalidatequeue[$((i+1))]}
 
-		screen-pos-at $((col + 1)) $((row + 1))
+		screen::pos-at $((col + 1)) $((row + 1))
 		cell="${bmap[$((row * __MAP_WIDTH + col))]}"
 		printf '%s' "$cell"
 	done

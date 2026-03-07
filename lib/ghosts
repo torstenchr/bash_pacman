@@ -34,7 +34,7 @@ __GHOST_DIRECTION="up"
 __GHOST_ICON="#"
 __GHOST_OLD_CELL=" "
 
-_move-ghost() {
+ghosts::_move() {
 	local cell_pos_a cell_pos_b cell_pos_c
 	local cell_type_a cell_type_b cell_type_c
 
@@ -65,12 +65,12 @@ _move-ghost() {
 		"right") new_direction=("right" "up" "down");;
 	esac
 
-	cell_pos_a=( $(map-new-position "${__GHOST_POSITION[@]}" "${new_direction[0]}") )
-	cell_pos_b=( $(map-new-position "${__GHOST_POSITION[@]}" "${new_direction[1]}") )
-	cell_pos_c=( $(map-new-position "${__GHOST_POSITION[@]}" "${new_direction[2]}") )
-	cell_type_a=$(map-get-cell-type "${cell_pos_a[@]}")
-	cell_type_b=$(map-get-cell-type "${cell_pos_b[@]}")
-	cell_type_c=$(map-get-cell-type "${cell_pos_c[@]}")
+	cell_pos_a=( $(map::new-position "${__GHOST_POSITION[@]}" "${new_direction[0]}") )
+	cell_pos_b=( $(map::new-position "${__GHOST_POSITION[@]}" "${new_direction[1]}") )
+	cell_pos_c=( $(map::new-position "${__GHOST_POSITION[@]}" "${new_direction[2]}") )
+	cell_type_a=$(map::get-cell-type "${cell_pos_a[@]}")
+	cell_type_b=$(map::get-cell-type "${cell_pos_b[@]}")
+	cell_type_c=$(map::get-cell-type "${cell_pos_c[@]}")
 
 	local cells=()
 	[[ "$cell_type_a" != "$MAP_CELL_WALL" ]] && cells+=("a")
@@ -97,11 +97,11 @@ _move-ghost() {
 	esac
 }
 
-ghosts-update() {
-    map-set-cell-content "${__GHOST_POSITION[@]}" "$__GHOST_OLD_CELL"
-    _move-ghost
-	__GHOST_OLD_CELL=$(map-get-cell-content "${__GHOST_POSITION[@]}")
-    map-set-cell-content "${__GHOST_POSITION[@]}" "$__GHOST_ICON"
+ghosts::update() {
+    map::set-cell-content "${__GHOST_POSITION[@]}" "$__GHOST_OLD_CELL"
+    ghosts::_move
+	__GHOST_OLD_CELL=$(map::get-cell-content "${__GHOST_POSITION[@]}")
+    map::set-cell-content "${__GHOST_POSITION[@]}" "$__GHOST_ICON"
 }
 
 

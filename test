@@ -5,11 +5,11 @@ source "$SCRIPT_DIR/lib/timer"
 
 
 set -x
-timer-start
+timer::start
 
 while true; do
-    timer-tick
-    value=timer-tick
+    timer::tick
+    value=timer::tick
     echo "$value"
     sleep 1
 done

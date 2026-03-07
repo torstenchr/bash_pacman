@@ -44,13 +44,13 @@ SCREEN_LINES=$LINES
 #  $1: Position to request the reserved line:
 #       "bottom": get at line at the bottom of the screen
 #  SCREEN_LINE: variable is set with the result of the call
-screen_reserve_line() {
+screen::reserve-line() {
     local position="$1"
     case "$position" in
         "bottom")
             SCREEN_LINE=$_reserved_lines
             ((_reserved_lines++))
-            _screen_init
+            screen::_init
             return
             ;;
         *)
@@ -64,7 +64,7 @@ screen_reserve_line() {
 #       "bottom": get at line at the bottom of the screen
 #  $2: Index of reserved line in integer
 #  $3: String content
-screen_write_to_reserved_line() {
+screen::write-to-reserved-line() {
     local position="$1"
     local index="$2"
     local text="$3"
@@ -76,31 +76,31 @@ screen_write_to_reserved_line() {
 	printf '\e8' # restore the cursor location
 }
 
-screen-pos-at() {
+screen::pos-at() {
   local col="$1"
   local row="$2"
 
   printf "\e[%s;%sH" "${row}" "${col}"
 }
 
-screen-pos-home() {
+screen::pos-home() {
 	printf '\e[H'
 }
 
-screen-erase-all() {
+screen::erase-all() {
   printf '\e[2J'
   printf '\e[H'
 }
 
-screen-hide-cursor() {
+screen::hide-cursor() {
   printf '\e[?25l'
 }
 
-screen-show-cursor() {
+screen::show-cursor() {
   printf '\e[?25h'
 }
 
-_screen_init() {
+screen::_init() {
     # Do not init if nothing is reserved
   if [[ $_reserved_lines == 0 ]]; then return; fi
 
@@ -115,7 +115,7 @@ _screen_init() {
 }
 
 
-_screen_deinit() {
+screen::_deinit() {
     # Do not init if nothing is reserved
     if [[ $_reserved_lines == 0 ]]; then return; fi
 
@@ -133,7 +133,7 @@ _screen_deinit() {
 
 source "${SCRIPT_DIR}/lib/traps"
 
-trap_add "_screen_deinit" exit
-trap_add "_screen_init" winch
+trap::add "screen::_deinit" exit
+trap::add "screen::_init" winch
 
 SOURCE_SCREEN=1

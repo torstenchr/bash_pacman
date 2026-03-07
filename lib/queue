@@ -31,7 +31,7 @@ if [ ! -z "${SOURCE_QUEUE:-}" ]; then return; fi
 # $1: Name of the queue variable
 # $2: Element to push
 # $3: (Optional) max size of queue - pop oldest element off
-queue-push() {
+queue::push() {
     local -n queue="$1"
     local element="$2"
     local max_size=0
@@ -48,7 +48,7 @@ queue-push() {
 ## Push new item in the queue
 # $1: Name of the queue variable
 # $OUT: The elemt popped
-queue-pop() {
+queue::pop() {
     local -n queue="$1"
     local result
 
@@ -58,7 +58,7 @@ queue-pop() {
     echo "$result"
 }
 
-queue-size() {
+queue::size() {
     local -n queue="$1"
     echo "${#queue[@]}"
 }

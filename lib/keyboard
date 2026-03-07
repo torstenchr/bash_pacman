@@ -34,7 +34,7 @@ _keyboard_read_pid=
 ## Setup the program for reading from the terminal keyboard.
 ## It opens a pipe and allow for reading from FD=3
 ## The content of the keyboard is written into FD=3
-keyboard-setup() {
+keyboard::setup() {
 	local PIPE
 	# open the terminal for keyboard input
 	exec {keyboardfd}</dev/tty || fatal 'no terminal detected'
@@ -43,11 +43,11 @@ keyboard-setup() {
 	PIPE=$(mktemp_fifo)
 	exec {pipefd}<>"$PIPE" || fatal "failed to open pipe $PIPE"
 
-    _read-keyboard <&"$keyboardfd" &
+    keyboard::_read <&"$keyboardfd" &
 	_keyboard_read_pid=$!
 }
 
-_read-keyboard() {
+keyboard::_read() {
     ## Proudly copied from Dave Eddy (YSAP.sh): https://github.com/bahamas10/nightfall-tui/tree/main
 	local escape_char=$'\u1b'
 	while true; do
@@ -75,12 +75,12 @@ _read-keyboard() {
 	done
 }
 
-_cleanup-keyboard() {
+keyboard::_cleanup() {
 	if [[ -n $_keyboard_read_pid ]]; then
 		kill "$_keyboard_read_pid"
 	fi
 }
 
-trap_add _cleanup-keyboard EXIT
+trap::add keyboard::_cleanup EXIT
 
 export SOURCE_KEYBOARD=1
