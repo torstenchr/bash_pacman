@@ -87,16 +87,16 @@ update-keyboard() {
 			unset RUNNING
 			;;
 		"key-left" | "a")
-			pacman-set-direction "left"
+			pacman::set-direction "left"
 			;;
 		"key-right" | "d")
-			pacman-set-direction "right"
+			pacman::set-direction "right"
 			;;
 		"key-up" | "w")
-			pacman-set-direction "up"
+			pacman::set-direction "up"
 			;;
 		"key-down" | "s")
-			pacman-set-direction "down"
+			pacman::set-direction "down"
 			;;
 		[1-9])
 			[[ -z ${DEBUG_FLAGS[$KEY_READ]} ]] && DEBUG_FLAGS["$KEY_READ"]="1" || DEBUG_FLAGS["$KEY_READ"]=""
@@ -118,7 +118,7 @@ update-frame() {
 	FRAME_TIMER=0
 
 	# Game updates on every move
-	pacman-update
+	pacman::update
 	ghosts::update
 }
 

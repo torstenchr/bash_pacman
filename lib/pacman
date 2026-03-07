@@ -41,7 +41,7 @@ __PACMAN_EMPTY_ICON=" "
 __PACMAN_DIRECTION=""
 __PACMAN_NEW_DIRECTION=""
 
-_move-pacman() {
+pacman::_move() {
     # Test if new direction is possible
 	local new_pos=( $(map::new-position "${__PACMAN_POS[@]}" "$__PACMAN_NEW_DIRECTION") )
 	local cell_type=$(map::get-cell-type "${new_pos[@]}")
@@ -81,16 +81,16 @@ _move-pacman() {
 
 ## Set the direction of pacman for subsequent updates
 # $1: Direction of pacman (left, right, up, down)
-pacman-set-direction() {
+pacman::set-direction() {
     __PACMAN_NEW_DIRECTION="$1"
 }
 
 ## Game loop update
-pacman-update() {
+pacman::update() {
 	# Erase old position of pacman
 	map::set-cell-content "${__PACMAN_POS[@]}" "$__PACMAN_EMPTY_ICON"
 	# Move pacman according to keyboard
-	_move-pacman
+	pacman::_move
 	# Set new position icon
 	map::set-cell-content "${__PACMAN_POS[@]}" "$__PACMAN_ICON"
 }
