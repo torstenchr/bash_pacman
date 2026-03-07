@@ -287,10 +287,10 @@ map::_print-invalidated() {
 	sz=${#invalidatequeue[@]}
 	for ((i=0; i<sz; i+=2)); do
 		col=${invalidatequeue[$i]}
-		row=${invalidatequeue[$((i+1))]}
+		row=${invalidatequeue[i+1]}
 
 		screen::pos-at $((col + 1)) $((row + 1))
-		cell="${__MAP_PRETTY_MAP[$((row * __MAP_WIDTH + col))]}"
+		cell="${__MAP_PRETTY_MAP[row * __MAP_WIDTH + col]}"
 		printf '%b' "$cell"
 	done
 
