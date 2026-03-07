@@ -37,7 +37,7 @@ __PACMAN_ICONS[left]="Ↄ"
 __PACMAN_ICONS[right]="C"
 __PACMAN_ICONS[up]="U"
 __PACMAN_ICONS[down]="∩"
-__PACMAN_ICON="${__PACMAN_ICONS[right]}"
+__PACMAN_ICON="\e[01;33m${__PACMAN_ICONS[right]}\e[00m"
 __PACMAN_EMPTY_ICON=" "
 __PACMAN_DIRECTION=""
 __PACMAN_NEW_DIRECTION=""
@@ -109,7 +109,7 @@ pacman::_move() {
 	# Update position
 	__PACMAN_POS=("${new_pos[@]}")
 	# Update Icon for direction
-	[[ -n $__PACMAN_DIRECTION ]] && __PACMAN_ICON=${__PACMAN_ICONS[$__PACMAN_DIRECTION]}
+	[[ -n $__PACMAN_DIRECTION ]] && __PACMAN_ICON="\e[01;33m${__PACMAN_ICONS[$__PACMAN_DIRECTION]}\e[00m"
 }
 
 ## Game loop update

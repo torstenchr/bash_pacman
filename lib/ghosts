@@ -31,7 +31,7 @@ source "$SCRIPT_DIR/lib/map"
 __GHOST_POSITION=(14 14)
 __GHOST_OLD_POSITION=
 __GHOST_DIRECTION="up"
-__GHOST_ICON="#"
+__GHOST_ICON="\e[01;31mᗣ\e[00m"
 __GHOST_OLD_CELL=" "
 
 ghosts::_move() {

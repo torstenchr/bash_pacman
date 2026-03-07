@@ -28,16 +28,16 @@ if [ -n "$SOURCE_MAP" ]; then return; fi
 
 source "$SCRIPT_DIR/lib/utils"
 source "$SCRIPT_DIR/lib/screen"
-source "$SCRIPT_DIR/lib/queue"
 source "$SCRIPT_DIR/lib/math"
 
 # Global "Enums" for content of a map cell. Can be used in other modules.
-MAP_CELL_WALL=1
-MAP_CELL_CHEESE=2
-MAP_CELL_BONUS=3
-MAP_CELL_EMPTY=4
-MAP_CELL_GHOST=5
-MAP_CELL_PACMAN=6
+MAP_CELL_WALL=1    	# Any type of wall
+MAP_CELL_CHEESE=2	# A cell with a cheese
+MAP_CELL_BONUS=3	# A cell with a bonus
+MAP_CELL_EMPTY=4	# An empty cell space
+MAP_CELL_GHOST=5	# Cell occupied by ghost
+MAP_CELL_PACMAN=6	# Cell occupied by pacman
+MAP_CELL_BOX=7		# A cell space within the start box of ghosts
 
 
 ## Anything below here is considered "private"
@@ -46,24 +46,27 @@ __MAP_CHEESE_COUNT=0
 __MAP_BONUS_COUNT=0
 
 # Colours of the map (when I get it working)
-__MAP_COLOUR_WALL="" #"\033[01;32m"
-__MAP_COLOUR_DEFAULT="" #"\033[00m"
+__MAP_COLOUR_WALL='\e[01;34m'
+__MAP_COLOUR_CHEESE='\e[38;5;180m'
+__MAP_COLOUR_BONUS='\e[38;5;180m'
+__MAP_COLOUR_DEFAULT='\e[00m'
 
 # Pretty print of map content. Makes map creation easy and perhaps 
 # the printing can have themes at some point
-__MAP_CELL_CHEESE="∙"
-__MAP_CELL_BONUS="Θ"
+__MAP_CELL_CHEESE="${__MAP_COLOUR_CHEESE}∙${__MAP_COLOUR_DEFAULT}"
+__MAP_CELL_BONUS="${__MAP_COLOUR_BONUS}⬤${__MAP_COLOUR_DEFAULT}"
 __MAP_CELL_EMPTY=" "
-__MAP_CELL_TOP_LEFT="$__MAP_COLOUR_WALL╔$__MAP_COLOUR_DEFAULT"
-__MAP_CELL_TOP_RIGHT="╗"
-__MAP_CELL_BOTTOM_LEFT="╚"
-__MAP_CELL_BOTTOM_RIGHT="╝"
-__MAP_CELL_WALL_VERT="║"
-__MAP_CELL_WALL_HORZ="═"
+__MAP_CELL_TOP_LEFT="${__MAP_COLOUR_WALL}╔${__MAP_COLOUR_DEFAULT}"
+__MAP_CELL_TOP_RIGHT="${__MAP_COLOUR_WALL}╗${__MAP_COLOUR_DEFAULT}"
+__MAP_CELL_BOTTOM_LEFT="${__MAP_COLOUR_WALL}╚${__MAP_COLOUR_DEFAULT}"
+__MAP_CELL_BOTTOM_RIGHT="${__MAP_COLOUR_WALL}╝${__MAP_COLOUR_DEFAULT}"
+__MAP_CELL_WALL_VERT="${__MAP_COLOUR_WALL}║${__MAP_COLOUR_DEFAULT}"
+__MAP_CELL_WALL_HORZ="${__MAP_COLOUR_WALL}═${__MAP_COLOUR_DEFAULT}"
 
 # Array of the actual map. 
 # Seems to be the fastest way to store and access individual cells
-declare -a bmap
+declare -a __MAP_DEFAUT_MAP
+declare -a __MAP_PRETTY_MAP
 
 # Queue of invalidated cells. So I only need to "repaint" certain cells
 # and not the entire map. Thinks this is faster
@@ -80,64 +83,96 @@ __MAP_HEIGHT=0
 # $1: path to file
 map::read() {
 	local filename="$1"
-
 	[[ -f "$filename" ]] || error "Map file not found: $filename"
 
-	mapfile -t __MAP_FULL < "$filename"
-	## TODO: Pure bash
-	__MAP_CHEESE_COUNT=$(printf '%s' "${__MAP_FULL[@]}" | tr -cd '*' | wc -c)
-	__MAP_BONUS_COUNT=$(printf '%s' "${__MAP_FULL[@]}" | tr -cd '0' | wc -c)
+	local input_map
+	mapfile -t input_map < "$filename"
 
-	echo "__MAP_CHEESE_COUNT: $__MAP_CHEESE_COUNT" >> pacman.log
-	echo "__MAP_BONUS_COUNT: $__MAP_BONUS_COUNT" >> pacman.log
-
-	map::_get-dimentions
+	map::_get-dimentions "${input_map[@]}"
+    map::_transform "${input_map[@]}"
 	map::_prettify
-    map::_transform
 }
 
 map::_get-dimentions() {
-	local line
+	local input_map=("$@")
 
-	__MAP_HEIGHT="${#__MAP_FULL[@]}"
-	for line in "${__MAP_FULL[@]}"; do
+	__MAP_HEIGHT="${#input_map[@]}"
+
+	local line
+	for line in "${input_map[@]}"; do
 		__MAP_WIDTH=$(math::max "$__MAP_WIDTH" ${#line})
 	done
-	echo "Height: $__MAP_HEIGHT | Width: $__MAP_WIDTH" >> pacman.log
+
+	log "Height: $__MAP_HEIGHT | Width: $__MAP_WIDTH"
 }
 
 map::_transform() {
-    local row col
-	for ((row=0; row<${#__MAP_FULL[@]}; row++)); do
-        local line=${__MAP_FULL[row]}
+	local input_map=("$@")
+
+    local row col cell
+	for ((row=0; row<${#input_map[@]}; row++)); do
+        local line=${input_map[row]}
         for ((col=0; col<${#line}; col++)); do
 			cell="${line:$col:1}"
-            bmap[row * __MAP_WIDTH + col]="$cell"
+            __MAP_DEFAUT_MAP[row * __MAP_WIDTH + col]="$cell"
         done
     done
 }
 
 
 map::_prettify() {
-	local new_map=()
-	local line
-	for line in "${__MAP_FULL[@]}"; do
-		# Pretty format cheeze
-		line=${line//"*"/$__MAP_CELL_CHEESE}
-		line=${line//"0"/$__MAP_CELL_BONUS}
-		# Pretty format walls
-		line=${line//"q"/$__MAP_CELL_TOP_LEFT}
-		line=${line//"w"/$__MAP_CELL_TOP_RIGHT}
-		line=${line//"a"/$__MAP_CELL_BOTTOM_LEFT}
-		line=${line//"s"/$__MAP_CELL_BOTTOM_RIGHT}
-		line=${line//"|"/$__MAP_CELL_WALL_VERT}
-		line=${line//"-"/$__MAP_CELL_WALL_HORZ}
-		# Ghost home
-		line=${line//"x"/$__MAP_CELL_EMPTY}
+	local cell size
+	
+	size=${#__MAP_DEFAUT_MAP[@]}
+	for ((idx=0; idx<size; idx++)); do
+		cell="${__MAP_DEFAUT_MAP[idx]}"
 
-		new_map+=("$line")
+		case "$cell" in
+			"*") 
+				((__MAP_CHEESE_COUNT++))
+				cell=$__MAP_CELL_CHEESE
+				;;
+			"0")
+				((__MAP_BONUS_COUNT++)) 
+				cell=$__MAP_CELL_BONUS
+				;;
+			"q") 
+				cell=$__MAP_CELL_TOP_LEFT
+				;;
+			"w") 
+				cell=$__MAP_CELL_TOP_RIGHT
+				;;
+			"a") 
+				cell=$__MAP_CELL_BOTTOM_LEFT
+				;;
+			"s") 
+				cell=$__MAP_CELL_BOTTOM_RIGHT
+				;;
+			"|") 
+				cell=$__MAP_CELL_WALL_VERT
+				;;
+			"-") 
+				cell=$__MAP_CELL_WALL_HORZ
+				;;
+			"x") 
+				cell=$__MAP_CELL_EMPTY
+				;;
+		esac
+
+		__MAP_PRETTY_MAP[idx]=$cell
 	done
-	__MAP_FULL=("${new_map[@]}")
+
+	log "__MAP_CHEESE_COUNT: $__MAP_CHEESE_COUNT"
+	log "__MAP_BONUS_COUNT: $__MAP_BONUS_COUNT"
+}
+
+map::_get-content() {
+	local -n input=$1
+	local col="$2"
+	local row="$3"
+
+    local cell="${input[row * __MAP_WIDTH + col]}"
+	echo "$cell"
 }
 
 ## Get content of a cell as printet on sceen
@@ -148,7 +183,7 @@ map::get-cell-content() {
 	local col="$1"
 	local row="$2"
 
-    local cell="${bmap[row * __MAP_WIDTH + col]}"
+    local cell=$(map::_get-content __MAP_PRETTY_MAP "$col" "$row")
 	echo "$cell"
 }
 
@@ -162,12 +197,18 @@ map::get-cell-type() {
 	local row="$2"
 	local result
 
-	local cell=$(map::get-cell-content "$col" "$row")
+	local cell=$(map::_get-content __MAP_DEFAUT_MAP "$col" "$row")
 	case $cell in
-		"$__MAP_CELL_CHEESE") result=$MAP_CELL_CHEESE;;
-		"$__MAP_CELL_BONUS")  result=$MAP_CELL_BONUS;;
-		"$__MAP_CELL_EMPTY")  result=$MAP_CELL_EMPTY;;
-		*)	 				  result=$MAP_CELL_WALL;;
+		" ")
+			result=$MAP_CELL_EMPTY;;
+		"*")
+			result=$MAP_CELL_CHEESE;;
+		"0")
+			result=$MAP_CELL_BONUS;;
+		"q" | "w" | "a" | "s" | "|" | "-")
+			result=$MAP_CELL_WALL;;
+		"x") 
+			result=$MAP_CELL_BOX;;
 	esac
 
 	echo "$result"
@@ -182,12 +223,7 @@ map::set-cell-content() {
 	local row="$2"
 	local cell_content="$3"
 
-	local old_cell=$(map::get-cell-type "$col" "$row")
-
-	[[ "$old_cell" == "$MAP_CELL_CHEESE" ]] && ((__MAP_CHEESE_COUNT--))
-	[[ "$old_cell" == "$MAP_CELL_BONUS" ]] && ((__MAP_BONUS_COUNT--))
-
-    bmap[row * __MAP_WIDTH + col]="$cell_content"
+    __MAP_PRETTY_MAP[row * __MAP_WIDTH + col]="$cell_content"
 
 	invalidatequeue+=("$col")
 	invalidatequeue+=("$row")
@@ -230,13 +266,17 @@ map::new-position() {
 }
 
 map::_print-full() {
-	local i col row
+	local i j col row
 
-	for ((i=0; i<${#bmap[@]}; i++)); do
-		col=$((i % __MAP_WIDTH))
-		row=$((i / __MAP_WIDTH))
-		screen::pos-at $((col + 1)) $((row + 1))
-		printf '%s' "${bmap[$i]}"
+	local s
+	for ((row=0; row<__MAP_HEIGHT; row++)); do
+		s=""
+
+		for ((col=0; col<__MAP_WIDTH; col++)); do
+			s+="${__MAP_PRETTY_MAP[row * __MAP_WIDTH + col]}"
+		done
+
+		printf "$s\n"
 	done
 	
 	__map_is_printet=1
@@ -257,8 +297,8 @@ map::print-map() {
 		row=${invalidatequeue[$((i+1))]}
 
 		screen::pos-at $((col + 1)) $((row + 1))
-		cell="${bmap[$((row * __MAP_WIDTH + col))]}"
-		printf '%s' "$cell"
+		cell="${__MAP_PRETTY_MAP[$((row * __MAP_WIDTH + col))]}"
+		printf "$cell"
 	done
 	# Reset invalidation queue
 	invalidatequeue=()
