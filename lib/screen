@@ -133,7 +133,7 @@ _screen_deinit() {
 
 source "${SCRIPT_DIR}/lib/traps"
 
-trap_add "_screen_deinit" exit
-trap_add "_screen_init" winch
+trap::add "_screen_deinit" exit
+trap::add "_screen_init" winch
 
 SOURCE_SCREEN=1

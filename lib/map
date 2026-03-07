@@ -101,7 +101,7 @@ _map-get-dimentions() {
 
 	__MAP_HEIGHT="${#__MAP_FULL[@]}"
 	for line in "${__MAP_FULL[@]}"; do
-		__MAP_WIDTH=$(math-max "$__MAP_WIDTH" ${#line})
+		__MAP_WIDTH=$(math::max "$__MAP_WIDTH" ${#line})
 	done
 	echo "Height: $__MAP_HEIGHT | Width: $__MAP_WIDTH" >> pacman.log
 }

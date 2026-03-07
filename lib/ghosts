@@ -34,7 +34,7 @@ __GHOST_DIRECTION="up"
 __GHOST_ICON="#"
 __GHOST_OLD_CELL=" "
 
-_move-ghost() {
+ghosts::_move() {
 	local cell_pos_a cell_pos_b cell_pos_c
 	local cell_type_a cell_type_b cell_type_c
 
@@ -97,9 +97,9 @@ _move-ghost() {
 	esac
 }
 
-ghosts-update() {
+ghosts::update() {
     map-set-cell-content "${__GHOST_POSITION[@]}" "$__GHOST_OLD_CELL"
-    _move-ghost
+    ghosts::_move
 	__GHOST_OLD_CELL=$(map-get-cell-content "${__GHOST_POSITION[@]}")
     map-set-cell-content "${__GHOST_POSITION[@]}" "$__GHOST_ICON"
 }

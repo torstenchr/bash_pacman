@@ -58,7 +58,7 @@ setup() {
 	screen-erase-all
 	screen-hide-cursor
 	statusbar-setup
-	keyboard-setup
+	keyboard::setup
 
 	echo "" > pacman.log
 }
@@ -119,7 +119,7 @@ update-frame() {
 
 	# Game updates on every move
 	pacman-update
-	ghosts-update
+	ghosts::update
 }
 
 update-screen() {
