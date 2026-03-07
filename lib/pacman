@@ -43,8 +43,8 @@ __PACMAN_NEW_DIRECTION=""
 
 _move-pacman() {
     # Test if new direction is possible
-	local new_pos=( $(map-new-position "${__PACMAN_POS[@]}" "$__PACMAN_NEW_DIRECTION") )
-	local cell_type=$(map-get-cell-type "${new_pos[@]}")
+	local new_pos=( $(map::new-position "${__PACMAN_POS[@]}" "$__PACMAN_NEW_DIRECTION") )
+	local cell_type=$(map::get-cell-type "${new_pos[@]}")
 
     # If new direction doesn't leads to wall change course
     [[ "$cell_type" != "$MAP_CELL_WALL" ]] &&   
@@ -52,8 +52,8 @@ _move-pacman() {
         __PACMAN_DIRECTION="$__PACMAN_NEW_DIRECTION" && 
         __PACMAN_NEW_DIRECTION=""
 
-	new_pos=( $(map-new-position "${__PACMAN_POS[@]}" "$__PACMAN_DIRECTION") )
-	cell_type=$(map-get-cell-type "${new_pos[@]}")
+	new_pos=( $(map::new-position "${__PACMAN_POS[@]}" "$__PACMAN_DIRECTION") )
+	cell_type=$(map::get-cell-type "${new_pos[@]}")
 
 	## Handle collision with walls
 	case "$cell_type" in
@@ -88,10 +88,10 @@ pacman-set-direction() {
 ## Game loop update
 pacman-update() {
 	# Erase old position of pacman
-	map-set-cell-content "${__PACMAN_POS[@]}" "$__PACMAN_EMPTY_ICON"
+	map::set-cell-content "${__PACMAN_POS[@]}" "$__PACMAN_EMPTY_ICON"
 	# Move pacman according to keyboard
 	_move-pacman
 	# Set new position icon
-	map-set-cell-content "${__PACMAN_POS[@]}" "$__PACMAN_ICON"
+	map::set-cell-content "${__PACMAN_POS[@]}" "$__PACMAN_ICON"
 }
 export SOURCE_PACMAN=1

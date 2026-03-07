@@ -124,7 +124,7 @@ update-frame() {
 
 update-screen() {
 	screen-pos-home
-	map-print-map
+	map::print-map
 }
 
 update-statusbar() {
@@ -137,7 +137,7 @@ update-statusbar() {
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[2]} ]] && content="$content | Direction: $PACMAN_DIRECTION"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[3]} ]] && content="$content | Cheese count: $__MAP_CHEESE_COUNT"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[4]} ]] && content="$content | POS: ${__PACMAN_POS[0]},${__PACMAN_POS[1]}"
-	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[5]} ]] && content="$content | Cell Content: $(map-get-cell-type ${__PACMAN_POS[0]} ${__PACMAN_POS[1]})"
+	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[5]} ]] && content="$content | Cell Content: $(map::get-cell-type ${__PACMAN_POS[0]} ${__PACMAN_POS[1]})"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[9]} ]] && content="$content | Clock: $clock"
 
 	statusbar-update "$content"
@@ -147,7 +147,7 @@ main() {
 	setup
 
 	# Read in only map I have for now
-	map-read "$SCRIPT_DIR/maps/map1"
+	map::read "$SCRIPT_DIR/maps/map1"
 
 	# GAME LOOP
 	local i=0
@@ -168,7 +168,7 @@ main() {
 		update-statusbar
 
 		# Game done?
-		map-is-clear && RUNNING=""
+		map::is-clear && RUNNING=""
 
 		timer-tick
 
