@@ -30,11 +30,12 @@ source "$SCRIPT_DIR/lib/utils"
 source "$SCRIPT_DIR/lib/traps"
 
 _keyboard_read_pid=
+declare -A __KEYBOARD_CALLBACKS
 
-## Setup the program for reading from the terminal keyboard.
-## It opens a pipe and allow for reading from FD=3
-## The content of the keyboard is written into FD=3
-keyboard::setup() {
+## Initializes the program for reading from the terminal keyboard.
+## In order to recieve inputs use the keyboard::register function
+##  to associate a key with a callback function
+keyboard::init() {
 	local PIPE
 	# open the terminal for keyboard input
 	exec {keyboardfd}</dev/tty || fatal 'no terminal detected'
@@ -72,6 +73,59 @@ keyboard::_read() {
 		if [[ -n $output ]]; then
 			echo "$output" >&"$pipefd"
 		fi
+	done
+}
+
+## This function SHOULD be called from main thread as it triggers callbacks
+## to subscribers. If called from other threads the callbacks are also called
+## from this thread. 
+keyboard::check-for-input() {
+	local new_key
+	read -rs -u "$pipefd" -t .001 new_key
+
+	# Nothing read, exit
+	[[ -z $new_key ]] && return
+
+	# No callbacks registered for key
+	[[ -z "${__KEYBOARD_CALLBACKS[$new_key]}" ]] && return
+
+	while read -d "," -r callback
+	do
+		$callback "$new_key"
+	done <<< "${__KEYBOARD_CALLBACKS[$new_key]}"
+}
+
+keyboard::_dump-register() {
+	local key
+
+	for key in "${!__KEYBOARD_CALLBACKS[@]}"; do
+		echo "Registrations for key: '$key': '${__KEYBOARD_CALLBACKS[$key]}'"
+	done
+}
+
+keyboard::_register-key() {
+	local new_callback="$1"
+	local key="$2"
+
+	local callback_list="${__KEYBOARD_CALLBACKS[$key]}"
+	# Do not add same callback function twice
+	[[ "$callback_list" =~ $new_callback ]] && return
+
+	callback_list="$new_callback,$callback_list"
+	__KEYBOARD_CALLBACKS[$key]="$callback_list"
+}
+
+## Register a set of keys to a callback function. If the key is pressed the check-for-input
+## method will ensure the callbacks for the keys are called.
+# $1:  Callback function
+# $2+: list of keys to register
+keyboard::register-keys() {
+	local callback="$1"; shift
+	local keys=("$@")
+
+	local key
+	for key in "${keys[@]}"; do
+		keyboard::_register-key "$callback" "$key"
 	done
 }
 

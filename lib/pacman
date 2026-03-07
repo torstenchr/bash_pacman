@@ -28,6 +28,7 @@ if [ -n "$SOURCE_PACMAN" ]; then return; fi
 
 source "$SCRIPT_DIR/lib/map"
 source "$SCRIPT_DIR/lib/utils"
+source "$SCRIPT_DIR/lib/keyboard"
 
 # PACMAN stuff
 __PACMAN_POS=(14 23)
@@ -40,6 +41,38 @@ __PACMAN_ICON="${__PACMAN_ICONS[right]}"
 __PACMAN_EMPTY_ICON=" "
 __PACMAN_DIRECTION=""
 __PACMAN_NEW_DIRECTION=""
+
+## Pacman intialization function. Setups keyboard association etc.
+pacman::init() {
+	# Register AWSD movements
+	keyboard::register-keys "pacman::_keyboard-callback" "a" "s" "d" "w"
+	# Register keypad movements
+	keyboard::register-keys "pacman::_keyboard-callback" "key-up" "key-down" "key-right" "key-left"
+}
+
+pacman::_keyboard-callback() {
+	local key="$1"
+
+	case $key in
+		"key-left" | "a")
+			pacman::_set-direction "left"
+			;;
+		"key-right" | "d")
+			pacman::_set-direction "right"
+			;;
+		"key-up" | "w")
+			pacman::_set-direction "up"
+			;;
+		"key-down" | "s")
+			pacman::_set-direction "down"
+			;;
+	esac
+}
+
+pacman::_set-direction() {
+    __PACMAN_NEW_DIRECTION="$1"
+}
+
 
 pacman::_move() {
     # Test if new direction is possible
@@ -77,12 +110,6 @@ pacman::_move() {
 	__PACMAN_POS=("${new_pos[@]}")
 	# Update Icon for direction
 	[[ -n $__PACMAN_DIRECTION ]] && __PACMAN_ICON=${__PACMAN_ICONS[$__PACMAN_DIRECTION]}
-}
-
-## Set the direction of pacman for subsequent updates
-# $1: Direction of pacman (left, right, up, down)
-pacman::set-direction() {
-    __PACMAN_NEW_DIRECTION="$1"
 }
 
 ## Game loop update

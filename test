@@ -1,15 +1,26 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]})"
-source "$SCRIPT_DIR/lib/timer"
+source "$SCRIPT_DIR/lib/keyboard"
 
 
-set -x
-timer::start
+test_a() {
+    key="$*"
+
+    echo "A - Pressed: $key"
+}
+
+test_b() {
+    key="$*"
+
+    echo "B - Pressed: $key"
+}
+
+keyboard::register-keys "test_a" "a" "w"
+keyboard::register-keys "test_b" "q" "w"
+keyboard::init
 
 while true; do
-    timer::tick
-    value=timer::tick
-    echo "$value"
-    sleep 1
+    keyboard::check-for-input
+    # sleep 1
 done
