@@ -42,7 +42,7 @@ timer-tick() {
 
     if [[ -n $_TIMER_DEBUG  ]]; then
         # Average FPS over last 30 ticks, not perfect but should be more readable
-        queue-push _TIMER_ELAPSED_US_VALUES "$_TIMER_LAST_ELAPSED" 30
+        queue::push _TIMER_ELAPSED_US_VALUES "$_TIMER_LAST_ELAPSED" 30
         _timer-update-fps
     fi
 }
