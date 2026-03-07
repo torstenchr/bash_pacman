@@ -60,14 +60,19 @@ keyboard::_read() {
 
 		local output=
 		case "$data" in
-			'[A') output='key-up';;
-			'[B') output='key-down';;
-            '[C') output='key-right';;
-            '[D') output='key-left';;
-            '[F') output='key-end';;
-			'[H') output='key-home';;
-			''      ) output='key-enter';;
-            *       ) output="$data"
+			'[A' ) output='key-up';;
+			'[B' ) output='key-down';;
+            '[C' ) output='key-right';;
+            '[D' ) output='key-left';;
+            '[F' ) output='key-end';;
+			'[H' ) output='key-home';;
+			'[2' ) output='key-insert';;
+			'[3' ) output='key-delete';;
+			'[4' ) output='key-pgup';;
+			'[6' ) output='key-pgdown';;
+			''   ) output='key-enter';;
+			'['* ) log "Unknown escaped key: $data";;
+            *    ) output="$data"
 		esac
 
 		if [[ -n $output ]]; then
