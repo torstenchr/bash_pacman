@@ -37,18 +37,18 @@ _keyboard_read_pid=
 keyboard-setup() {
 	local PIPE
 	# open the terminal for keyboard input
-	exec 4</dev/tty || fatal 'no terminal detected'
+	exec {keyboardfd}</dev/tty || fatal 'no terminal detected'
 
 	# TODO: Take this as an argument??
 	PIPE=$(mktemp_fifo)
-	exec 3<>"$PIPE" || fatal "failed to open pipe $PIPE"
+	exec {pipefd}<>"$PIPE" || fatal "failed to open pipe $PIPE"
 
-    _read-keyboard <&4 &
+    _read-keyboard <&"$keyboardfd" &
 	_keyboard_read_pid=$!
 }
 
 _read-keyboard() {
-    ## Proudly copied from Dave Eddy (YSAP): https://github.com/bahamas10/nightfall-tui/tree/main
+    ## Proudly copied from Dave Eddy (YSAP.sh): https://github.com/bahamas10/nightfall-tui/tree/main
 	local escape_char=$'\u1b'
 	while true; do
 		local data=
@@ -70,7 +70,7 @@ _read-keyboard() {
 		esac
 
 		if [[ -n $output ]]; then
-			echo "$output" >&3
+			echo "$output" >&"$pipefd"
 		fi
 	done
 }

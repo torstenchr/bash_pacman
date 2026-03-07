@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # MIT License
 #
@@ -23,45 +23,17 @@
 # SOFTWARE.
 
 # PRAGMA: Use once and only as sourced
-if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The timer can only be sourced!"; exit 1; fi
-if [ ! -z "${SOURCE_QUEUE:-}" ]; then return; fi
+if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The utils can only be sourced!"; exit 1; fi
+if [ -n "$SOURCE_MATH" ]; then return; fi
 
-
-## Push new item in the queue
-# $1: Name of the queue variable
-# $2: Element to push
-# $3: (Optional) max size of queue - pop oldest element off
-queue-push() {
-    local -n queue="$1"
-    local element="$2"
-    local max_size=0
-    [[ $# -eq 3 ]] && max_size="$3"
-
-    queue+=("$element")
-
-    # Pop oldest element if max_size defined and reached
-    if (( max_size > 0)) && ((${#queue[@]} > max_size)); then
-        queue=("${queue[@]:1}")
-    fi
+math-max() {
+    [[ $1 -gt $2 ]] && echo "$1" && return
+    [[ $1 -le $2 ]] && echo "$2" && return
 }
 
-## Push new item in the queue
-# $1: Name of the queue variable
-# $OUT: The elemt popped
-queue-pop() {
-    local -n queue="$1"
-    local result
-
-    result="${queue[0]}"
-    queue=("${queue[@]:1}")
-
-    echo "$result"
+math-min() {
+    [[ $1 -gt $2 ]] && echo "$2" && return
+    [[ $1 -le $2 ]] && echo "$1" && return
 }
 
-queue-size() {
-    local -n queue="$1"
-    echo "${#queue[@]}"
-}
-
-
-SOURCE_QUEUE=1
+export SOURCE_MATH=1

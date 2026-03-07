@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+#
+# MIT License
+#
+# Copyright (c) 2026 Torsten Bonde Christiansen
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+# PRAGMA: Use once and only as sourced
+if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The file can only be sourced!"; exit 1; fi
+if [ -n "$SOURCE_PACMAN" ]; then return; fi
+
+source "$SCRIPT_DIR/lib/map"
+source "$SCRIPT_DIR/lib/utils"
+
+# PACMAN stuff
+__PACMAN_POS=(14 23)
+declare -A __PACMAN_ICONS
+__PACMAN_ICONS[left]="Ↄ"
+__PACMAN_ICONS[right]="C"
+__PACMAN_ICONS[up]="U"
+__PACMAN_ICONS[down]="∩"
+__PACMAN_ICON="${__PACMAN_ICONS[right]}"
+__PACMAN_EMPTY_ICON=" "
+__PACMAN_DIRECTION=""
+__PACMAN_NEW_DIRECTION=""
+
+_move-pacman() {
+    # Test if new direction is possible
+	local new_pos=( $(map-new-position "${__PACMAN_POS[@]}" "$__PACMAN_NEW_DIRECTION") )
+	local cell_type=$(map-get-cell-type "${new_pos[@]}")
+
+    # If new direction doesn't leads to wall change course
+    [[ "$cell_type" != "$MAP_CELL_WALL" ]] &&   
+        [[ -n "$__PACMAN_NEW_DIRECTION" ]] && 
+        __PACMAN_DIRECTION="$__PACMAN_NEW_DIRECTION" && 
+        __PACMAN_NEW_DIRECTION=""
+
+	new_pos=( $(map-new-position "${__PACMAN_POS[@]}" "$__PACMAN_DIRECTION") )
+	cell_type=$(map-get-cell-type "${new_pos[@]}")
+
+	## Handle collision with walls
+	case "$cell_type" in
+		"$MAP_CELL_WALL")
+			# Colliding with wall, do nothing
+			return
+			;;
+		"$MAP_CELL_CHEESE")
+			# Hitting Cheese - score a point
+			((SCORE+=1))
+			;;
+		"$MAP_CELL_BONUS")
+			# Hitting a bonus - activate bonus period
+			;;
+		"$MAP_CELL_EMPTY")
+			# Do nothing, just move
+			;;
+	esac
+
+	# Update position
+	__PACMAN_POS=("${new_pos[@]}")
+	# Update Icon for direction
+	[[ -n $__PACMAN_DIRECTION ]] && __PACMAN_ICON=${__PACMAN_ICONS[$__PACMAN_DIRECTION]}
+}
+
+## Set the direction of pacman for subsequent updates
+# $1: Direction of pacman (left, right, up, down)
+pacman-set-direction() {
+    __PACMAN_NEW_DIRECTION="$1"
+}
+
+## Game loop update
+pacman-update() {
+	# Erase old position of pacman
+	map-set-cell-content "${__PACMAN_POS[@]}" "$__PACMAN_EMPTY_ICON"
+	# Move pacman according to keyboard
+	_move-pacman
+	# Set new position icon
+	map-set-cell-content "${__PACMAN_POS[@]}" "$__PACMAN_ICON"
+}
+export SOURCE_PACMAN=1

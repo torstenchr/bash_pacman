@@ -36,22 +36,12 @@
 SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]})"
 # Last registered key from keyboard
 KEY_READ=
-# PACMAN stuff
-PACMAN_POS=(4 14)
-PACMAN_OLD_POS=(4 14)
-declare -A PACMAN_ICONS
-PACMAN_ICONS[left]="Ↄ"
-PACMAN_ICONS[right]="C"
-PACMAN_ICONS[up]="U"
-PACMAN_ICONS[down]="∩"
-PACMAN_ICON=${PACMAN_ICONS[right]}
-PACMAN_EMPTY_ICON=" "
-PACMAN_DIRECTION=""
-PACMAN_ELAPSE_TIMER=0
-PACMAN_MOVE_EVERY_MS=100  # Move every 0.5 second
-PACMAN_MOVE_EVERY_US=$(( PACMAN_MOVE_EVERY_MS * 1000 ))
 
 # Game loop variables
+FRAME_TIMER=0
+FRAME_UPDATE_INTERVAL=100  # Move every 0.1 second
+FRAME_UPDATE_INTERVAL_US=$(( FRAME_UPDATE_INTERVAL * 1000 ))
+
 RUNNING=1
 DEBUG=
 DEBUG_FLAGS=()
@@ -61,28 +51,34 @@ source "$SCRIPT_DIR/lib/keyboard"
 source "$SCRIPT_DIR/lib/map"
 source "$SCRIPT_DIR/lib/statusbar"
 source "$SCRIPT_DIR/lib/timer"
+source "$SCRIPT_DIR/lib/ghosts"
+source "$SCRIPT_DIR/lib/pacman"
 
 setup() {
 	screen-erase-all
 	screen-hide-cursor
 	statusbar-setup
 	keyboard-setup
+
+	echo "" > pacman.log
 }
 
 teardown() {
 	screen-show-cursor
 }
 
-update-keyboard() {
-	local new_key
-	read -rs -u 3 -t .001 new_key
+toggle-debug() {
+    [[ -z $DEBUG ]] && DEBUG=1 || unset DEBUG
 
-	if [[ -n $new_key ]]; then
-		KEY_READ=$new_key
-	fi
+	# Toggle FPS debugging
+	timer-debug
 }
 
-handle-keyboard() {
+update-keyboard() {
+	local new_key
+	read -rs -u "$pipefd" -t .001 new_key
+	[[ -n $new_key ]] && KEY_READ=$new_key
+
 	case $KEY_READ in
 		"key-home")
 			toggle-debug
@@ -91,110 +87,42 @@ handle-keyboard() {
 			unset RUNNING
 			;;
 		"key-left" | "a")
-			PACMAN_DIRECTION="left"
+			pacman-set-direction "left"
 			;;
 		"key-right" | "d")
-			PACMAN_DIRECTION="right"
+			pacman-set-direction "right"
 			;;
 		"key-up" | "w")
-			PACMAN_DIRECTION="up"
+			pacman-set-direction "up"
 			;;
 		"key-down" | "s")
-			PACMAN_DIRECTION="down"
+			pacman-set-direction "down"
 			;;
 		[1-9])
-			if [[ -z ${DEBUG_FLAGS[$KEY_READ]} ]]; then
-				DEBUG_FLAGS["$KEY_READ"]="1"
-			else
-				DEBUG_FLAGS["$KEY_READ"]=""
-			fi
+			[[ -z ${DEBUG_FLAGS[$KEY_READ]} ]] && DEBUG_FLAGS["$KEY_READ"]="1" || DEBUG_FLAGS["$KEY_READ"]=""
 			;;
 	esac
 	KEY_READ=
 }
 
-update-pacman() {
-	## Measure time since last move, only move every PACMAN_MOVE_EVERY_US microsecs
+update-frame() {
+	## Measure time since last move, only move every FRAME_UPDATE_INTERVAL_US microsecs
 	local frame_time
 	frame_time=$(timer-get-elapse-time)
-	PACMAN_ELAPSE_TIMER=$(( PACMAN_ELAPSE_TIMER + frame_time ))
+	FRAME_TIMER=$(( FRAME_TIMER + frame_time ))
 
 	# No movement yet - exit the function
-	[[ $PACMAN_ELAPSE_TIMER -lt $PACMAN_MOVE_EVERY_US ]] && return
+	[[ $FRAME_TIMER -lt $FRAME_UPDATE_INTERVAL_US ]] && return
 
 	# Reset elapse timer
-	PACMAN_ELAPSE_TIMER=0
+	FRAME_TIMER=0
 
-	# Store old position - needed when drawing to erase old pacman icon
-	PACMAN_OLD_POS=("${PACMAN_POS[@]}")
-
-	# Update position according to direction
-	local PM_COL="${PACMAN_POS[0]}"
-	local PM_ROW="${PACMAN_POS[1]}"
-	case $PACMAN_DIRECTION in
-		left)  	((PM_COL-=1));;
-		right) 	((PM_COL+=1));;
-		up)		((PM_ROW-=1));;
-		down)	((PM_ROW+=1));;
-	esac
-	# Wrap around edge of maps, ensures both under and over shoot is kept within maps size
-	((PM_COL = (PM_COL + 28) % 28))
-	((PM_ROW = (PM_ROW + 31) % 31))
-
-	## Handle collision with walls
-	local cell_type=$(map-get-cell-type $PM_COL $PM_ROW)
-	case "$cell_type" in
-		"$MAP_CELL_WALL")
-			# Colliding with wall, do nothing
-			return
-			;;
-		"$MAP_CELL_CHEESE")
-			# Hitting Cheese - score a point
-			((SCORE+=1))
-			;;
-		"$MAP_CELL_BONUS")
-			# Hitting a bonus - score a point AND activate bonus period
-			((SCORE+=1))
-			# TODO: Start Bonus Period
-			;;
-		"$MAP_CELL_EMPTY")
-			# Do nothing, just move
-			;;
-	esac
-
-	if [[ "$cell" == "$MAP_CELL_WALL" ]]; then
-		return
-	fi
-
-	# Update position
-	PACMAN_POS=("$PM_COL" "$PM_ROW")
-	# Update Icon for direction
-	PACMAN_ICON=${PACMAN_ICONS[$PACMAN_DIRECTION]}
+	# Game updates on every move
+	pacman-update
+	ghosts-update
 }
 
-update-map() {
-	# Erase old position of pacman
-	local PM_OLD_COL="${PACMAN_OLD_POS[0]}"
-	local PM_OLD_ROW="${PACMAN_OLD_POS[1]}"
-	map-set-cell-content "$PM_OLD_COL" "$PM_OLD_ROW" "$PACMAN_EMPTY_ICON"
-
-	local PM_COL="${PACMAN_POS[0]}"
-	local PM_ROW="${PACMAN_POS[1]}"
-	map-set-cell-content "$PM_COL" "$PM_ROW" "$PACMAN_ICON"
-}
-
-toggle-debug() {
-    if [[ -z $DEBUG ]]; then
-        DEBUG=1
-    else
-        unset DEBUG
-    fi
-
-	# Toggle FPS debugging
-	timer-debug
-}
-
-print-map() {
+update-screen() {
 	screen-pos-home
 	map-print-map
 }
@@ -208,6 +136,8 @@ update-statusbar() {
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[1]} ]] && content="$content | Avg. FPS: $fps"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[2]} ]] && content="$content | Direction: $PACMAN_DIRECTION"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[3]} ]] && content="$content | Cheese count: $__MAP_CHEESE_COUNT"
+	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[4]} ]] && content="$content | POS: ${__PACMAN_POS[0]},${__PACMAN_POS[1]}"
+	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[5]} ]] && content="$content | Cell Content: $(map-get-cell-type ${__PACMAN_POS[0]} ${__PACMAN_POS[1]})"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[9]} ]] && content="$content | Clock: $clock"
 
 	statusbar-update "$content"
@@ -216,31 +146,40 @@ update-statusbar() {
 main() {
 	setup
 
+	# Read in only map I have for now
 	map-read "$SCRIPT_DIR/maps/map1"
 
 	# GAME LOOP
-	i=0
+	local i=0
 	timer-start
+
+	# Game loop continues until RUNNING is set!
 	while [[ -n $RUNNING ]]; do
+		# Input update
 		update-keyboard
-		handle-keyboard
 
-		update-pacman
-		update-map
-		print-map
+		# Game update
+		update-frame
 
-		if map-is-clear; then
-			RUNNING=""
-		fi
+		# Output update
+		update-screen
 
+		# Update user friend statusbar
 		update-statusbar
 
+		# Game done?
+		map-is-clear && RUNNING=""
+
 		timer-tick
+
+		# Frame count
 		((i=i+1))
 	done;
 
-	total_time=$(timer-stop)
-	fps=$(( (i * 1000 * 1000) / total_time ))
+	# total time is recorded in number of microseconds since timer started
+	local total_time=$(timer-stop)
+	local fps=$(( (i * 1000 * 1000) / total_time ))
+	screen-pos-at 0 32
 	echo "Total Frames: $i | Total Time: ${total_time}us | Avg. FPS: $fps"
 
 	teardown

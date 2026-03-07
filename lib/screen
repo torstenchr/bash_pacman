@@ -80,7 +80,7 @@ screen-pos-at() {
   local col="$1"
   local row="$2"
 
-  printf "\e[{$row};{$col}H"
+  printf "\e[%s;%sH" "${row}" "${col}"
 }
 
 screen-pos-home() {
