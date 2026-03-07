@@ -40,7 +40,8 @@ LINE_RE = re.compile(
     r'^(?P<pluses>\++)\s+(?P<ts>\d+\.\d{6,})\s+(?P<rest>.*)$'
 )
 # Function marker like: name(): ...
-FUNC_MARKER_RE = re.compile(r'(?P<name>[A-Za-z0-9_-]+)\(\):')
+FUNC_MARKER_RE = re.compile(r'(?P<name>(?:[A-Za-z0-9_-]+::)*[A-Za-z0-9_-]+)\(\):')
+#FUNC_MARKER_RE = re.compile(r'(?P<name>[A-Za-z0-9_-]+)\(\):')
 
 ParsedLine = Tuple[int, int, float, Optional[str], str]  # (idx, depth, ts, func, rest)
 
