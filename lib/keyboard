@@ -102,9 +102,8 @@ keyboard::check-for-input() {
 
 keyboard::_dump-register() {
 	local key
-
 	for key in "${!__KEYBOARD_CALLBACKS[@]}"; do
-		echo "Registrations for key: '$key': '${__KEYBOARD_CALLBACKS[$key]}'"
+		log "Registrations for key: '$key': '${__KEYBOARD_CALLBACKS[$key]}'"
 	done
 }
 

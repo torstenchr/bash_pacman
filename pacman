@@ -52,24 +52,37 @@ source "$SCRIPT_DIR/lib/timer"
 source "$SCRIPT_DIR/lib/ghosts"
 source "$SCRIPT_DIR/lib/pacman"
 
-setup() {
+game::setup() {
 	screen::erase-all
 	screen::hide-cursor
 	statusbar::setup
-	keyboard::init
 	pacman::init
 
-	keyboard::register-keys "_keyboard_callback" "key-home" "key-end" "1" "2" "3" "4" "5" "6" "7" "8" "9"
+	keyboard::register-keys "game::_speed-callback" "+" "-"
+	keyboard::register-keys "game::_keyboard_callback" "key-home" "key-end" "1" "2" "3" "4" "5" "6" "7" "8" "9"
 
+	keyboard::init
 	echo "" > pacman.log
 }
 
-_keyboard_callback() {
+game::_speed-callback() {
+	local key="$1"
+
+	log "key: $key"
+
+	case $key in
+		"+") (( FRAME_UPDATE_INTERVAL-=10 ));; # Speed up movement by giving more frequent updates
+		"-") (( FRAME_UPDATE_INTERVAL+=10 ));; # Slow down movement by giving less frequent updates
+	esac
+	FRAME_UPDATE_INTERVAL_US=$(( FRAME_UPDATE_INTERVAL * 1000 ))
+}
+
+game::_keyboard_callback() {
 	local key="$1"
 
 	case $key in
 		"key-home")
-			toggle-debug
+			game::toggle-debug
 			;;
 		"key-end")
 			unset RUNNING
@@ -80,23 +93,23 @@ _keyboard_callback() {
 	esac	
 }
 
-teardown() {
+game::teardown() {
 	screen::show-cursor
 }
 
-toggle-debug() {
+game::toggle-debug() {
     [[ -z $DEBUG ]] && DEBUG=1 || unset DEBUG
 
 	# Toggle FPS debugging
 	timer::debug
 }
 
-update-keyboard() {
+game::update-keyboard() {
 	# Poke the keyboard handler
 	keyboard::check-for-input
 }
 
-update-frame() {
+game::update-frame() {
 	## Measure time since last move, only move every FRAME_UPDATE_INTERVAL_US microsecs
 	local frame_time
 	frame_time=$(timer::get-elapse-time)
@@ -113,12 +126,12 @@ update-frame() {
 	ghosts::update
 }
 
-update-screen() {
+game::update-screen() {
 	screen::pos-home
 	map::print-map
 }
 
-update-statusbar() {
+game::update-statusbar() {
 	local fps=$(timer::get-fps)
 	local clock
 	printf -v clock '%(%Y-%m-%d %H:%M:%S)T\n' -1
@@ -129,13 +142,13 @@ update-statusbar() {
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[3]} ]] && content="$content | Cheese count: $__MAP_CHEESE_COUNT"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[4]} ]] && content="$content | POS: ${__PACMAN_POS[0]},${__PACMAN_POS[1]}"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[5]} ]] && content="$content | Cell Content: $(map::get-cell-type ${__PACMAN_POS[0]} ${__PACMAN_POS[1]})"
-	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[9]} ]] && content="$content | Clock: $clock"
+	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[6]} ]] && content="$content | Update Time: $FRAME_UPDATE_INTERVAL"
 
 	statusbar::update "$content"
 }
 
 main() {
-	setup
+	game::setup
 
 	# Read in only map I have for now
 	map::read "$SCRIPT_DIR/maps/map1"
@@ -147,16 +160,16 @@ main() {
 	# Game loop continues until RUNNING is set!
 	while [[ -n $RUNNING ]]; do
 		# Input update
-		update-keyboard
+		game::update-keyboard
 
 		# Game update
-		update-frame
+		game::update-frame
 
 		# Output update
-		update-screen
+		game::update-screen
 
 		# Update user friend statusbar
-		update-statusbar
+		game::update-statusbar
 
 		# Game done?
 		map::is-clear && RUNNING=""
@@ -173,7 +186,7 @@ main() {
 	screen::pos-at 0 32
 	echo "Total Frames: $i | Total Time: ${total_time}us | Avg. FPS: $fps"
 
-	teardown
+	game::teardown
 }
 
 main

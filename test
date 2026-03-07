@@ -18,6 +18,7 @@ test_b() {
 
 keyboard::register-keys "test_a" "a" "w"
 keyboard::register-keys "test_b" "q" "w"
+keyboard::_dump-register
 keyboard::init
 
 while true; do
