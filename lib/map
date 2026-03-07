@@ -72,7 +72,6 @@ declare -a __MAP_PRETTY_MAP
 # and not the entire map. Thinks this is faster
 # Must be read in pair of (col,row)
 declare -a invalidatequeue
-__map_is_printet=
 
 __MAP_WIDTH=0
 __MAP_HEIGHT=0
@@ -266,30 +265,24 @@ map::new-position() {
 }
 
 map::_print-full() {
-	local i j col row
+	local col row
 
-	local s
+	local s=""
 	for ((row=0; row<__MAP_HEIGHT; row++)); do
-		s=""
-
 		for ((col=0; col<__MAP_WIDTH; col++)); do
 			s+="${__MAP_PRETTY_MAP[row * __MAP_WIDTH + col]}"
 		done
 
-		printf "$s\n"
+		printf '%b\n' "$s"
+		s=""
 	done
 	
-	__map_is_printet=1
+	__MAP_PRINT_FUNCTION="map::_print-invalidated"
 }
 
-# Called from the game loop to print out the map to screen
-map::print-map() {
-	if [[ -z $__map_is_printet ]]; then
-		map::_print-full
-		return
-	fi
-
+map::_print-invalidated() {
 	local sz col row i
+
 	# not sureif bash evaluates 2nd expr. on each loop - just calc it here in case
 	sz=${#invalidatequeue[@]}
 	for ((i=0; i<sz; i+=2)); do
@@ -298,10 +291,17 @@ map::print-map() {
 
 		screen::pos-at $((col + 1)) $((row + 1))
 		cell="${__MAP_PRETTY_MAP[$((row * __MAP_WIDTH + col))]}"
-		printf "$cell"
+		printf '%b' "$cell"
 	done
+
 	# Reset invalidation queue
 	invalidatequeue=()
+}
+
+__MAP_PRINT_FUNCTION="map::_print-full"
+# Called from the game loop to print out the map to screen
+map::print-map() {
+	$__MAP_PRINT_FUNCTION
 }
 
 export SOURCE_MAP=1
