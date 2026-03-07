@@ -34,12 +34,10 @@
 ## GLOBALS
 # Base dir for the game
 SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]})"
-# Last registered key from keyboard
-KEY_READ=
 
 # Game loop variables
 FRAME_TIMER=0
-FRAME_UPDATE_INTERVAL=100  # Move every 0.1 second
+FRAME_UPDATE_INTERVAL=125  # Move every 0.XXX seconds
 FRAME_UPDATE_INTERVAL_US=$(( FRAME_UPDATE_INTERVAL * 1000 ))
 
 RUNNING=1
@@ -58,9 +56,28 @@ setup() {
 	screen::erase-all
 	screen::hide-cursor
 	statusbar::setup
-	keyboard::setup
+	keyboard::init
+	pacman::init
+
+	keyboard::register-keys "_keyboard_callback" "key-home" "key-end" "1" "2" "3" "4" "5" "6" "7" "8" "9"
 
 	echo "" > pacman.log
+}
+
+_keyboard_callback() {
+	local key="$1"
+
+	case $key in
+		"key-home")
+			toggle-debug
+			;;
+		"key-end")
+			unset RUNNING
+			;;
+		[1-9])
+			[[ -z ${DEBUG_FLAGS[$key]} ]] && DEBUG_FLAGS["$key"]="1" || DEBUG_FLAGS["$key"]=""
+			;;
+	esac	
 }
 
 teardown() {
@@ -75,34 +92,8 @@ toggle-debug() {
 }
 
 update-keyboard() {
-	local new_key
-	read -rs -u "$pipefd" -t .001 new_key
-	[[ -n $new_key ]] && KEY_READ=$new_key
-
-	case $KEY_READ in
-		"key-home")
-			toggle-debug
-			;;
-		"key-end")
-			unset RUNNING
-			;;
-		"key-left" | "a")
-			pacman::set-direction "left"
-			;;
-		"key-right" | "d")
-			pacman::set-direction "right"
-			;;
-		"key-up" | "w")
-			pacman::set-direction "up"
-			;;
-		"key-down" | "s")
-			pacman::set-direction "down"
-			;;
-		[1-9])
-			[[ -z ${DEBUG_FLAGS[$KEY_READ]} ]] && DEBUG_FLAGS["$KEY_READ"]="1" || DEBUG_FLAGS["$KEY_READ"]=""
-			;;
-	esac
-	KEY_READ=
+	# Poke the keyboard handler
+	keyboard::check-for-input
 }
 
 update-frame() {
