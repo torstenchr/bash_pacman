@@ -57,7 +57,7 @@ source "$SCRIPT_DIR/lib/pacman"
 setup() {
 	screen::erase-all
 	screen::hide-cursor
-	statusbar-setup
+	statusbar::setup
 	keyboard::setup
 
 	echo "" > pacman.log
@@ -140,7 +140,7 @@ update-statusbar() {
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[5]} ]] && content="$content | Cell Content: $(map::get-cell-type ${__PACMAN_POS[0]} ${__PACMAN_POS[1]})"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[9]} ]] && content="$content | Clock: $clock"
 
-	statusbar-update "$content"
+	statusbar::update "$content"
 }
 
 main() {

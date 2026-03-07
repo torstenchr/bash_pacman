@@ -35,14 +35,14 @@ STATUSBAR_POSTFIX="..."
 source "${SCRIPT_DIR}/lib/screen"
 
 # Setup the statusbar
-statusbar-setup() {
+statusbar::setup() {
     screen::reserve-line "bottom"
     _statusbar_line=$SCREEN_LINE
 }
 
 ## Update the statusbar content
 # $1: The message to put on the statusbar
-statusbar-update() {
+statusbar::update() {
     local msg="$1"
     local len=${#msg}
 
