@@ -71,7 +71,7 @@ toggle-debug() {
     [[ -z $DEBUG ]] && DEBUG=1 || unset DEBUG
 
 	# Toggle FPS debugging
-	timer-debug
+	timer::debug
 }
 
 update-keyboard() {
@@ -108,7 +108,7 @@ update-keyboard() {
 update-frame() {
 	## Measure time since last move, only move every FRAME_UPDATE_INTERVAL_US microsecs
 	local frame_time
-	frame_time=$(timer-get-elapse-time)
+	frame_time=$(timer::get-elapse-time)
 	FRAME_TIMER=$(( FRAME_TIMER + frame_time ))
 
 	# No movement yet - exit the function
@@ -128,7 +128,7 @@ update-screen() {
 }
 
 update-statusbar() {
-	local fps=$(timer-get-fps)
+	local fps=$(timer::get-fps)
 	local clock
 	printf -v clock '%(%Y-%m-%d %H:%M:%S)T\n' -1
 
@@ -151,7 +151,7 @@ main() {
 
 	# GAME LOOP
 	local i=0
-	timer-start
+	timer::start
 
 	# Game loop continues until RUNNING is set!
 	while [[ -n $RUNNING ]]; do
@@ -170,14 +170,14 @@ main() {
 		# Game done?
 		map::is-clear && RUNNING=""
 
-		timer-tick
+		timer::tick
 
 		# Frame count
 		((i=i+1))
 	done;
 
 	# total time is recorded in number of microseconds since timer started
-	local total_time=$(timer-stop)
+	local total_time=$(timer::stop)
 	local fps=$(( (i * 1000 * 1000) / total_time ))
 	screen::pos-at 0 32
 	echo "Total Frames: $i | Total Time: ${total_time}us | Avg. FPS: $fps"
