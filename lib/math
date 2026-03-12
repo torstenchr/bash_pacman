@@ -23,7 +23,7 @@
 # SOFTWARE.
 
 # PRAGMA: Use once and only as sourced
-if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The utils can only be sourced!"; exit 1; fi
+if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The file ${BASH_SOURCE[0]} can only be sourced!"; exit 1; fi
 if [ -n "$SOURCE_MATH" ]; then return; fi
 
 math::max() {

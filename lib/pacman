@@ -23,7 +23,7 @@
 # SOFTWARE.
 
 # PRAGMA: Use once and only as sourced
-if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The file can only be sourced!"; exit 1; fi
+if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The file ${BASH_SOURCE[0]} can only be sourced!"; exit 1; fi
 if [ -n "$SOURCE_PACMAN" ]; then return; fi
 
 source "$SCRIPT_DIR/lib/map"
@@ -48,6 +48,13 @@ pacman::init() {
 	keyboard::register-keys "pacman::_keyboard-callback" "a" "s" "d" "w"
 	# Register keypad movements
 	keyboard::register-keys "pacman::_keyboard-callback" "key-up" "key-down" "key-right" "key-left"
+	# Place pacman on map
+	map::init-character "${__PACMAN_POS[@]}" "$MAP_CELL_PACMAN"
+	map::set-icon-callback "$MAP_CELL_PACMAN" "pacman::_pacman_icon"
+}
+
+pacman::_pacman_icon() {
+	echo "$__PACMAN_ICON"
 }
 
 pacman::_keyboard-callback() {
@@ -80,8 +87,8 @@ pacman::_move() {
 	local cell_type=$(map::get-cell-type "${new_pos[@]}")
 
     # If new direction doesn't leads to wall change course
-    [[ "$cell_type" != "$MAP_CELL_WALL" ]] &&   
-        [[ -n "$__PACMAN_NEW_DIRECTION" ]] && 
+    [[ -n "$__PACMAN_NEW_DIRECTION" ]] && 
+    	[[ "$cell_type" != "$MAP_CELL_WALL" ]] &&   
         __PACMAN_DIRECTION="$__PACMAN_NEW_DIRECTION" && 
         __PACMAN_NEW_DIRECTION=""
 
@@ -112,13 +119,14 @@ pacman::_move() {
 	[[ -n $__PACMAN_DIRECTION ]] && __PACMAN_ICON="\e[01;33m${__PACMAN_ICONS[$__PACMAN_DIRECTION]}\e[00m"
 }
 
-## Game loop update
 pacman::update() {
 	# Erase old position of pacman
-	map::set-cell-content "${__PACMAN_POS[@]}" "$__PACMAN_EMPTY_ICON"
+	local oldpos=( "${__PACMAN_POS[@]}" )
 	# Move pacman according to keyboard
 	pacman::_move
 	# Set new position icon
-	map::set-cell-content "${__PACMAN_POS[@]}" "$__PACMAN_ICON"
+	map::move-character "${oldpos[@]}" "${__PACMAN_POS[@]}" "$MAP_CELL_PACMAN"
 }
+
+
 export SOURCE_PACMAN=1

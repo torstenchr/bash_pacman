@@ -23,7 +23,7 @@
 # SOFTWARE.
 
 # PRAGMA: Use once and only as sourced
-if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The traps.sh can only be sourced!"; exit 1; fi
+if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The file ${BASH_SOURCE[0]} can only be sourced!"; exit 1; fi
 if [ ! -z "${SOURCE_TRAPS:-}" ]; then return; fi
 
 source "$SCRIPT_DIR/lib/utils"

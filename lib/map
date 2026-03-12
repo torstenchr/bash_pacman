@@ -23,7 +23,7 @@
 # SOFTWARE.
 
 # PRAGMA: Use once and only as sourced
-if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The file can only be sourced!"; exit 1; fi
+if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The file ${BASH_SOURCE[0]} can only be sourced!"; exit 1; fi
 if [ -n "$SOURCE_MAP" ]; then return; fi
 
 source "$SCRIPT_DIR/lib/utils"
@@ -65,7 +65,8 @@ __MAP_CELL_WALL_HORZ="${__MAP_COLOUR_WALL}═${__MAP_COLOUR_DEFAULT}"
 
 # Array of the actual map. 
 # Seems to be the fastest way to store and access individual cells
-declare -a __MAP_DEFAUT_MAP
+declare -a __MAP_MOVEABLE_MAP
+declare -a __MAP_BONUS_MAP
 declare -a __MAP_PRETTY_MAP
 
 # Queue of invalidated cells. So I only need to "repaint" certain cells
@@ -89,7 +90,25 @@ map::read() {
 
 	map::_get-dimentions "${input_map[@]}"
     map::_transform "${input_map[@]}"
-	map::_prettify
+	# map::_prettify
+	log "__MAP_CHEESE_COUNT: $__MAP_CHEESE_COUNT"
+	log "__MAP_BONUS_COUNT: $__MAP_BONUS_COUNT"
+}
+
+declare -A __MAP_ICON_CALLBACK
+
+map::set-icon-callback() {
+	local type="$1"
+	local callback="$2"
+
+	local map_entry
+	case $type in
+		"$MAP_CELL_PACMAN") map_entry="P";;
+		"$MAP_CELL_GHOST")  map_entry="G";;
+		*) fatal "Not a valid character"
+	esac
+
+	__MAP_ICON_CALLBACK["$map_entry"]="$callback"
 }
 
 map::_get-dimentions() {
@@ -113,77 +132,69 @@ map::_transform() {
         local line=${input_map[row]}
         for ((col=0; col<${#line}; col++)); do
 			cell="${line:$col:1}"
-            __MAP_DEFAUT_MAP[row * __MAP_WIDTH + col]="$cell"
+			case $cell in
+				"*" | "0" )
+					__MAP_BONUS_MAP[row * __MAP_WIDTH + col]="$cell"
+					__MAP_MOVEABLE_MAP[row * __MAP_WIDTH + col]=" "
+					[[ $cell == "*" ]] && (( __MAP_CHEESE_COUNT++ ))
+					[[ $cell == "0" ]] && (( __MAP_BONUS_COUNT++ ))
+					;;
+				*)
+					__MAP_BONUS_MAP[row * __MAP_WIDTH + col]=" "
+					__MAP_MOVEABLE_MAP[row * __MAP_WIDTH + col]="$cell"
+					;;
+			esac
         done
     done
 }
 
+map::_dump_maps() {
+	local s="" t="" u=""
+	for ((row=0; row<__MAP_HEIGHT; row++)); do
+		for ((col=0; col<__MAP_WIDTH; col++)); do
+			s+="${__MAP_MOVEABLE_MAP[row * __MAP_WIDTH + col]}"
+			t+="${__MAP_BONUS_MAP[row * __MAP_WIDTH + col]}"
+			u+="${__MAP_PRETTY_MAP[row * __MAP_WIDTH + col]}"
+		done
+		s+="\n"
+		t+="\n"
+		u+="\n"
+	done	
+
+	log "$s"
+	log "$t"
+}
+
+map::_prettify-cell() {
+	idx="$1"
+
+	cell="${__MAP_MOVEABLE_MAP[idx]}"
+	[[ $cell == " " ]] && cell="${__MAP_BONUS_MAP[idx]}"
+
+	case "$cell" in
+		"*") cell=$__MAP_CELL_CHEESE;;
+		"0") cell=$__MAP_CELL_BONUS;;
+		"q") cell=$__MAP_CELL_TOP_LEFT;;
+		"w") cell=$__MAP_CELL_TOP_RIGHT;;
+		"a") cell=$__MAP_CELL_BOTTOM_LEFT;;
+		"s") cell=$__MAP_CELL_BOTTOM_RIGHT;;
+		"|") cell=$__MAP_CELL_WALL_VERT;;
+		"-") cell=$__MAP_CELL_WALL_HORZ;;
+		"x") cell=$__MAP_CELL_EMPTY;;
+		"P" | "G")
+			cell=$(${__MAP_ICON_CALLBACK["$cell"]})
+	esac
+
+	echo "$cell"
+}
 
 map::_prettify() {
 	local cell size
 	
-	size=${#__MAP_DEFAUT_MAP[@]}
+	size=$(( __MAP_WIDTH * __MAP_HEIGHT ))
 	for ((idx=0; idx<size; idx++)); do
-		cell="${__MAP_DEFAUT_MAP[idx]}"
-
-		case "$cell" in
-			"*") 
-				((__MAP_CHEESE_COUNT++))
-				cell=$__MAP_CELL_CHEESE
-				;;
-			"0")
-				((__MAP_BONUS_COUNT++)) 
-				cell=$__MAP_CELL_BONUS
-				;;
-			"q") 
-				cell=$__MAP_CELL_TOP_LEFT
-				;;
-			"w") 
-				cell=$__MAP_CELL_TOP_RIGHT
-				;;
-			"a") 
-				cell=$__MAP_CELL_BOTTOM_LEFT
-				;;
-			"s") 
-				cell=$__MAP_CELL_BOTTOM_RIGHT
-				;;
-			"|") 
-				cell=$__MAP_CELL_WALL_VERT
-				;;
-			"-") 
-				cell=$__MAP_CELL_WALL_HORZ
-				;;
-			"x") 
-				cell=$__MAP_CELL_EMPTY
-				;;
-		esac
-
-		__MAP_PRETTY_MAP[idx]=$cell
+		map::_prettify-cell "$idx"
 	done
-
-	log "__MAP_CHEESE_COUNT: $__MAP_CHEESE_COUNT"
-	log "__MAP_BONUS_COUNT: $__MAP_BONUS_COUNT"
-}
-
-map::_get-content() {
-	local -n input=$1
-	local col="$2"
-	local row="$3"
-
-    local cell="${input[row * __MAP_WIDTH + col]}"
-	echo "$cell"
-}
-
-## Get content of a cell as printet on sceen
-# $1: col
-# $2: row
-# $OUT: content of the cell
-map::get-cell-content() {
-	local col="$1"
-	local row="$2"
-
-    local cell=$(map::_get-content __MAP_PRETTY_MAP "$col" "$row")
-	echo "$cell"
 }
 
 ## Get the cell type at position (col, row). Represented by enums
@@ -194,9 +205,12 @@ map::get-cell-content() {
 map::get-cell-type() {
 	local col="$1"
 	local row="$2"
-	local result
+	local result cell
 
-	local cell=$(map::_get-content __MAP_DEFAUT_MAP "$col" "$row")
+	(( idx = row * __MAP_WIDTH + col ))
+	cell="${__MAP_MOVEABLE_MAP[idx]}"
+	[[ $cell == " " ]] &&  cell="${__MAP_BONUS_MAP[idx]}"
+
 	case $cell in
 		" ")
 			result=$MAP_CELL_EMPTY;;
@@ -208,24 +222,65 @@ map::get-cell-type() {
 			result=$MAP_CELL_WALL;;
 		"x") 
 			result=$MAP_CELL_BOX;;
+		"P")
+			result=$MAP_CELL_PACMAN;;
+		"G")
+			result=$MAP_CELL_GHOST;;
 	esac
 
 	echo "$result"
 }
 
-## Set content of a cell to be printet on sceen
-# $1: col
-# $2: row
-# $3: new cell content
-map::set-cell-content() {
+map::init-character() {
 	local col="$1"
 	local row="$2"
-	local cell_content="$3"
+	local type="$3"
 
-    __MAP_PRETTY_MAP[row * __MAP_WIDTH + col]="$cell_content"
+	local map_entry=""
+	case $type in
+		"$MAP_CELL_PACMAN") 
+			map_entry="P"
+			;;
+		"$MAP_CELL_GHOST")
+			map_entry="G"
+			;;
+		*) fatal "Not a valid character"
+	esac
 
-	invalidatequeue+=("$col")
-	invalidatequeue+=("$row")
+	(( idx = row * __MAP_WIDTH + col ))
+	__MAP_MOVEABLE_MAP[idx]="$map_entry"
+}
+
+map::move-character() {
+	local old_col="$1"
+	local old_row="$2"
+	local new_col="$3"
+	local new_row="$4"
+	local type="$5"
+
+	local old_idx new_idx
+
+	(( old_idx = old_row * __MAP_WIDTH + old_col ))
+	(( new_idx = new_row * __MAP_WIDTH + new_col ))
+	local celltype=$(map::get-cell-type "$old_col" "$old_row" )
+	case $celltype in
+		"$MAP_CELL_PACMAN")
+			__MAP_MOVEABLE_MAP[old_idx]=" "
+			__MAP_MOVEABLE_MAP[new_idx]="P"
+			[[ ${__MAP_BONUS_MAP[new_idx]} == "*" ]] && (( __MAP_CHEESE_COUNT-- ))
+			__MAP_BONUS_MAP[new_idx]=" "
+			;;
+		"$MAP_CELL_GHOST")
+			__MAP_MOVEABLE_MAP[old_idx]=" "
+			__MAP_MOVEABLE_MAP[new_idx]="G"
+			;;
+		*) log "Trying to move and immovable object: $celltype ($old_col,$old_row)!!"
+	esac
+	
+	invalidatequeue+=( $old_col )
+	invalidatequeue+=( $old_row )
+	invalidatequeue+=( $new_col )
+	invalidatequeue+=( $new_row )
 }
 
 ## Check if all cheese have been eaten on the map
@@ -265,17 +320,18 @@ map::new-position() {
 }
 
 map::_print-full() {
-	local col row
+	local col row idx
 
 	local s=""
 	for ((row=0; row<__MAP_HEIGHT; row++)); do
 		for ((col=0; col<__MAP_WIDTH; col++)); do
-			s+="${__MAP_PRETTY_MAP[row * __MAP_WIDTH + col]}"
+			((idx=row * __MAP_WIDTH + col ))
+			s+="$(map::_prettify-cell "$idx" )"
 		done
 
-		printf '%b\n' "$s"
-		s=""
+		s+="\n"
 	done
+	printf '%b' "$s"
 	
 	__MAP_PRINT_FUNCTION="map::_print-invalidated"
 }
@@ -290,7 +346,8 @@ map::_print-invalidated() {
 		row=${invalidatequeue[i+1]}
 
 		screen::pos-at $((col + 1)) $((row + 1))
-		cell="${__MAP_PRETTY_MAP[row * __MAP_WIDTH + col]}"
+		((idx=row * __MAP_WIDTH + col ))
+		cell="$(map::_prettify-cell "$idx" )"
 		printf '%b' "$cell"
 	done
 

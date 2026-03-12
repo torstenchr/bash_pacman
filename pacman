@@ -53,16 +53,23 @@ source "$SCRIPT_DIR/lib/ghosts"
 source "$SCRIPT_DIR/lib/pacman"
 
 game::setup() {
+	# reset log
+	echo "" > pacman.log
+
+	# Read in only map I have for now
+	map::read "$SCRIPT_DIR/maps/map1"
+
 	screen::erase-all
 	screen::hide-cursor
 	statusbar::setup
 	pacman::init
+	ghosts::init
 
 	keyboard::register-keys "game::_speed-callback" "+" "-"
 	keyboard::register-keys "game::_keyboard_callback" "key-home" "key-end" "1" "2" "3" "4" "5" "6" "7" "8" "9"
+	keyboard::register-keys "game::_keyboard_callback" "key-pgdown"
 
 	keyboard::init
-	echo "" > pacman.log
 }
 
 game::_speed-callback() {
@@ -86,6 +93,9 @@ game::_keyboard_callback() {
 			;;
 		"key-end")
 			unset RUNNING
+			;;
+		"key-pgdown")
+			map::_dump_maps
 			;;
 		[1-9])
 			[[ -z ${DEBUG_FLAGS[$key]} ]] && DEBUG_FLAGS["$key"]="1" || DEBUG_FLAGS["$key"]=""
@@ -118,12 +128,12 @@ game::update-frame() {
 	# No movement yet - exit the function
 	[[ $FRAME_TIMER -lt $FRAME_UPDATE_INTERVAL_US ]] && return
 
-	# Reset elapse timer
-	FRAME_TIMER=0
-
 	# Game updates on every move
 	pacman::update
 	ghosts::update
+
+	# Reset elapse timer
+	FRAME_TIMER=0
 }
 
 game::update-screen() {
@@ -149,9 +159,6 @@ game::update-statusbar() {
 
 main() {
 	game::setup
-
-	# Read in only map I have for now
-	map::read "$SCRIPT_DIR/maps/map1"
 
 	# GAME LOOP
 	local i=0
