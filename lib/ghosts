@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+
+#!/usr/bin/env bash
 #
 # MIT License
 #
@@ -23,86 +25,18 @@
 # SOFTWARE.
 
 # PRAGMA: Use once and only as sourced
-if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The file can only be sourced!"; exit 1; fi
+if [ "${BASH_SOURCE[0]}" -ef "$0" ]; then echo "The file ${BASH_SOURCE[0]} can only be sourced!"; exit 1; fi
 if [ -n "$SOURCE_GHOSTS" ]; then return; fi
 
-source "$SCRIPT_DIR/lib/map"
 
-__GHOST_POSITION=(14 14)
-__GHOST_OLD_POSITION=
-__GHOST_DIRECTION="up"
-__GHOST_ICON="\e[01;31mᗣ\e[00m"
-__GHOST_OLD_CELL=" "
+source "$SCRIPT_DIR/lib/ghost"
 
-ghosts::_move() {
-	local cell_pos_a cell_pos_b cell_pos_c
-	local cell_type_a cell_type_b cell_type_c
-
-	# Store old position - needed when drawing to erase old pacman icon
-	__GHOST_OLD_POSITION=("${__GHOST_POSITION[@]}")
-
-	## Ghost can potentially move up to 3 new directions at each point:
-	##     B
-	##    ║∙║
-	##	 ═╝∙╚═
-	##	A∙∙#∙∙C
-	##	 ═╗∙╔═
- 	##	  ║∙║
-	##     D
-	## In the caculations below the ghost is alway coming from direction D
-	## and can potentially go towards A, B or C (but never back)
-	## The map can be rotated to fit the actual direction, but the calculation
-	## logic remains the same.
-	## If a direction contains a wall it is removed from potential paths to
-	## take.
-	## If more than one option exists, flip a coin for the direction.
-
-	local new_direction
-	case "$__GHOST_DIRECTION" in
-		"up")    new_direction=("left" "right" "up");;
-		"down")  new_direction=("left" "right" "down");;
-		"left")  new_direction=("left" "up" "down");;
-		"right") new_direction=("right" "up" "down");;
-	esac
-
-	cell_pos_a=( $(map::new-position "${__GHOST_POSITION[@]}" "${new_direction[0]}") )
-	cell_pos_b=( $(map::new-position "${__GHOST_POSITION[@]}" "${new_direction[1]}") )
-	cell_pos_c=( $(map::new-position "${__GHOST_POSITION[@]}" "${new_direction[2]}") )
-	cell_type_a=$(map::get-cell-type "${cell_pos_a[@]}")
-	cell_type_b=$(map::get-cell-type "${cell_pos_b[@]}")
-	cell_type_c=$(map::get-cell-type "${cell_pos_c[@]}")
-
-	local cells=()
-	[[ "$cell_type_a" != "$MAP_CELL_WALL" ]] && cells+=("a")
-	[[ "$cell_type_b" != "$MAP_CELL_WALL" ]] && cells+=("b")
-	[[ "$cell_type_c" != "$MAP_CELL_WALL" ]] && cells+=("c")
-
-	## TODO: Handle if a direction can see Pacman, prefer that route over all other
-
-	# Choose a random path based on possible options
-	local coin=$(( RANDOM % ${#cells[@]} ))
-	case "${cells[$coin]}" in
-		"a")
-			__GHOST_DIRECTION="${new_direction[0]}"
-			__GHOST_POSITION=( "${cell_pos_a[@]}" )
-			;;
-		"b")
-			__GHOST_DIRECTION="${new_direction[1]}"
-			__GHOST_POSITION=( "${cell_pos_b[@]}" )
-			;;
-		"c")
-			__GHOST_DIRECTION="${new_direction[2]}"
-			__GHOST_POSITION=( "${cell_pos_c[@]}" )
-			;;
-	esac
+ghosts::init() {
+    ghost::init
 }
 
 ghosts::update() {
-    map::set-cell-content "${__GHOST_POSITION[@]}" "$__GHOST_OLD_CELL"
-    ghosts::_move
-	__GHOST_OLD_CELL=$(map::get-cell-content "${__GHOST_POSITION[@]}")
-    map::set-cell-content "${__GHOST_POSITION[@]}" "$__GHOST_ICON"
+    ghost::update    
 }
 
-
-export SOURCE_GHOSTS=1
+SOURCE_GHOSTS=1
