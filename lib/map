@@ -337,7 +337,7 @@ map::_print-full() {
 	for ((row=0; row<__MAP_HEIGHT; row++)); do
 		for ((col=0; col<__MAP_WIDTH; col++)); do
 			((idx=row * __MAP_WIDTH + col ))
-			s+="$(map::_prettify-cell "$idx" )"
+			s+=${ map::_prettify-cell "$idx"; }
 		done
 
 		s+="\n"
@@ -358,7 +358,7 @@ map::_print-invalidated() {
 
 		screen::pos-at $((col + 1)) $((row + 1))
 		((idx=row * __MAP_WIDTH + col ))
-		cell="$(map::_prettify-cell "$idx" )"
+		cell=${ map::_prettify-cell "$idx"; }
 		printf '%b' "$cell"
 	done
 

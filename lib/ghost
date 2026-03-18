@@ -66,12 +66,12 @@ ghost::_move() {
 		"right") new_direction=("right" "up" "down");;
 	esac
 
-	cell_pos_a=( $(map::new-position "${position[@]}" "${new_direction[0]}") )
-	cell_pos_b=( $(map::new-position "${position[@]}" "${new_direction[1]}") )
-	cell_pos_c=( $(map::new-position "${position[@]}" "${new_direction[2]}") )
-	cell_type_a=$(map::get-cell-type "${cell_pos_a[@]}")
-	cell_type_b=$(map::get-cell-type "${cell_pos_b[@]}")
-	cell_type_c=$(map::get-cell-type "${cell_pos_c[@]}")
+	cell_pos_a=( ${ map::new-position "${position[@]}" "${new_direction[0]}"; } )
+	cell_pos_b=( ${ map::new-position "${position[@]}" "${new_direction[1]}"; } )
+	cell_pos_c=( ${ map::new-position "${position[@]}" "${new_direction[2]}"; } )
+	cell_type_a=${ map::get-cell-type "${cell_pos_a[@]}"; }
+	cell_type_b=${ map::get-cell-type "${cell_pos_b[@]}"; }
+	cell_type_c=${ map::get-cell-type "${cell_pos_c[@]}"; }
 
 	local cells=()
 	[[ "$cell_type_a" != "$MAP_CELL_WALL" ]] && cells+=("a")
