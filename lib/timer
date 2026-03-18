@@ -29,14 +29,14 @@ if [ ! -z "${SOURCE_TIMER:-}" ]; then return; fi
 source "$SCRIPT_DIR/lib/queue"
 
 timer::start() {
-    _TIMER_START=${EPOCHREALTIME/,/}
+    _TIMER_START=${EPOCHREALTIME/[,.]/}
     _TIMER_LAST_TICK=$_TIMER_START
     _TIMER_LAST_ELAPSED=0
     _TIMER_DEBUG=
 }
 
 timer::tick() {
-    local tick_time=${EPOCHREALTIME/,/}
+    local tick_time=${EPOCHREALTIME/[,.]/}
     _TIMER_LAST_ELAPSED=$(( tick_time - _TIMER_LAST_TICK ))
     _TIMER_LAST_TICK="$tick_time"
 
@@ -59,7 +59,7 @@ timer::debug() {
 
 # Stop timer
 timer::stop() {
-    local tick_time=${EPOCHREALTIME/,/}
+    local tick_time=${EPOCHREALTIME/[,.]/}
     local elapsed_us=$(( tick_time - _TIMER_START ))
     echo "$elapsed_us"
 }
