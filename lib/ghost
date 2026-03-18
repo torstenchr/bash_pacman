@@ -28,26 +28,19 @@ if [ -n "$SOURCE_GHOST" ]; then return; fi
 
 source "$SCRIPT_DIR/lib/map"
 
-__GHOST_POSITION=(14 14)
-__GHOST_OLD_POSITION=
-__GHOST_DIRECTION="up"
-__GHOST_ICON="\e[01;31mᗣ\e[00m"
-
+# __GHOST_POSITION=(14 14)
+# __GHOST_DIRECTION="up"
 ghost::init() {
-	map::init-character "${__GHOST_POSITION[@]}" "$MAP_CELL_GHOST"
-	map::set-icon-callback "$MAP_CELL_GHOST" "ghost::_ghost_icon"
-}
-
-ghost::_ghost_icon() {
-	echo "$__GHOST_ICON"
+	local init_pos=("$1" "$2")
+	map::init-character "${init_pos[@]}" "$MAP_CELL_GHOST"
 }
 
 ghost::_move() {
+    local -n position="$1"
+	local -n direction="$2"
+
 	local cell_pos_a cell_pos_b cell_pos_c
 	local cell_type_a cell_type_b cell_type_c
-
-	# Store old position - needed when drawing to erase old pacman icon
-	__GHOST_OLD_POSITION=("${__GHOST_POSITION[@]}")
 
 	## Ghost can potentially move up to 3 new directions at each point:
 	##     B
@@ -66,16 +59,16 @@ ghost::_move() {
 	## If more than one option exists, flip a coin for the direction.
 
 	local new_direction
-	case "$__GHOST_DIRECTION" in
+	case "$direction" in
 		"up")    new_direction=("left" "right" "up");;
 		"down")  new_direction=("left" "right" "down");;
 		"left")  new_direction=("left" "up" "down");;
 		"right") new_direction=("right" "up" "down");;
 	esac
 
-	cell_pos_a=( $(map::new-position "${__GHOST_POSITION[@]}" "${new_direction[0]}") )
-	cell_pos_b=( $(map::new-position "${__GHOST_POSITION[@]}" "${new_direction[1]}") )
-	cell_pos_c=( $(map::new-position "${__GHOST_POSITION[@]}" "${new_direction[2]}") )
+	cell_pos_a=( $(map::new-position "${position[@]}" "${new_direction[0]}") )
+	cell_pos_b=( $(map::new-position "${position[@]}" "${new_direction[1]}") )
+	cell_pos_c=( $(map::new-position "${position[@]}" "${new_direction[2]}") )
 	cell_type_a=$(map::get-cell-type "${cell_pos_a[@]}")
 	cell_type_b=$(map::get-cell-type "${cell_pos_b[@]}")
 	cell_type_c=$(map::get-cell-type "${cell_pos_c[@]}")
@@ -91,24 +84,28 @@ ghost::_move() {
 	local coin=$(( RANDOM % ${#cells[@]} ))
 	case "${cells[$coin]}" in
 		"a")
-			__GHOST_DIRECTION="${new_direction[0]}"
-			__GHOST_POSITION=( "${cell_pos_a[@]}" )
+			direction="${new_direction[0]}"
+			position=( "${cell_pos_a[@]}" )
 			;;
 		"b")
-			__GHOST_DIRECTION="${new_direction[1]}"
-			__GHOST_POSITION=( "${cell_pos_b[@]}" )
+			direction="${new_direction[1]}"
+			position=( "${cell_pos_b[@]}" )
 			;;
 		"c")
-			__GHOST_DIRECTION="${new_direction[2]}"
-			__GHOST_POSITION=( "${cell_pos_c[@]}" )
+			direction="${new_direction[2]}"
+			position=( "${cell_pos_c[@]}" )
 			;;
 	esac
 }
 
 ghost::update() {
-    local oldpos=( "${__GHOST_POSITION[@]}" )
-    ghost::_move
-    map::move-character "${oldpos[@]}" "${__GHOST_POSITION[@]}" "$MAP_CELL_GHOST"
+	# references to variables living in scope outside of here
+    local -n ghost_position="$1"
+	local -n ghost_direction="$2"
+	local oldpos=("${ghost_position[@]}")
+
+    ghost::_move "ghost_position" "ghost_direction"
+    map::move-character "${oldpos[@]}" "${ghost_position[@]}" "$MAP_CELL_GHOST"
 }
 
 export SOURCE_GHOST=1

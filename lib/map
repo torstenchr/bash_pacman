@@ -165,6 +165,16 @@ map::_dump_maps() {
 	log "$t"
 }
 
+map::_index-to-pos() {
+	local index="$1"
+	local col row
+
+	((row=index / __MAP_WIDTH))
+	((col=index % __MAP_WIDTH))
+
+	echo "$col" "$row"
+}
+
 map::_prettify-cell() {
 	idx="$1"
 
@@ -182,7 +192,8 @@ map::_prettify-cell() {
 		"-") cell=$__MAP_CELL_WALL_HORZ;;
 		"x") cell=$__MAP_CELL_EMPTY;;
 		"P" | "G")
-			cell=$(${__MAP_ICON_CALLBACK["$cell"]})
+			local pos=( $(map::_index-to-pos "$idx") )  
+			cell=$(${__MAP_ICON_CALLBACK["$cell"]} "${pos[@]}")
 	esac
 
 	echo "$cell"
@@ -277,10 +288,10 @@ map::move-character() {
 		*) log "Trying to move and immovable object: $celltype ($old_col,$old_row)!!"
 	esac
 	
-	invalidatequeue+=( $old_col )
-	invalidatequeue+=( $old_row )
-	invalidatequeue+=( $new_col )
-	invalidatequeue+=( $new_row )
+	invalidatequeue+=( "$old_col" )
+	invalidatequeue+=( "$old_row" )
+	invalidatequeue+=( "$new_col" )
+	invalidatequeue+=( "$new_row" )
 }
 
 ## Check if all cheese have been eaten on the map
