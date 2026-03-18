@@ -31,12 +31,52 @@ if [ -n "$SOURCE_GHOSTS" ]; then return; fi
 
 source "$SCRIPT_DIR/lib/ghost"
 
+__GHOST_ICON="ᗣ"
+
+__GHOST_A_POS=(1 1)
+__GHOST_A_DIRECTION="right"
+__GHOST_A_ICON="\e[38;5;196m$__GHOST_ICON\e[00m"
+
+__GHOST_B_POS=(26 1)
+__GHOST_B_DIRECTION="left"
+__GHOST_B_ICON="\e[38;5;217m$__GHOST_ICON\e[00m"
+
+__GHOST_C_POS=(1 29)
+__GHOST_C_DIRECTION="right"
+__GHOST_C_ICON="\e[38;5;51m$__GHOST_ICON\e[00m"
+
+__GHOST_D_POS=(26 29)
+__GHOST_D_DIRECTION="left"
+__GHOST_D_ICON="\e[38;5;214m$__GHOST_ICON\e[00m"
+
+
+ghosts::_ghost_icon() {
+    local col="$1"
+    local row="$2"
+    local result="?"
+    
+    (( col==__GHOST_A_POS[0] )) && ((row==__GHOST_A_POS[1])) && result="$__GHOST_A_ICON"
+    (( col==__GHOST_B_POS[0] )) && ((row==__GHOST_B_POS[1])) && result="$__GHOST_B_ICON"
+    (( col==__GHOST_C_POS[0] )) && ((row==__GHOST_C_POS[1])) && result="$__GHOST_C_ICON"
+    (( col==__GHOST_D_POS[0] )) && ((row==__GHOST_D_POS[1])) && result="$__GHOST_D_ICON"
+
+	echo "$result"
+}
+
+
 ghosts::init() {
-    ghost::init
+    map::set-icon-callback "$MAP_CELL_GHOST" "ghosts::_ghost_icon"
+    ghost::init "${__GHOST_A_POS[@]}"
+    ghost::init "${__GHOST_B_POS[@]}"
+    ghost::init "${__GHOST_C_POS[@]}"
+    ghost::init "${__GHOST_D_POS[@]}"
 }
 
 ghosts::update() {
-    ghost::update    
+    ghost::update "__GHOST_A_POS" "__GHOST_A_DIRECTION"  
+    ghost::update "__GHOST_B_POS" "__GHOST_B_DIRECTION"  
+    ghost::update "__GHOST_C_POS" "__GHOST_C_DIRECTION"  
+    ghost::update "__GHOST_D_POS" "__GHOST_D_DIRECTION"  
 }
 
 SOURCE_GHOSTS=1

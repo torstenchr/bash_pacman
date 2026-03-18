@@ -1,27 +1,30 @@
 #!/usr/bin/env bash
 
 SCRIPT_DIR="$(dirname ${BASH_SOURCE[0]})"
-source "$SCRIPT_DIR/lib/keyboard"
 
+# set -x
 
-test_a() {
-    key="$*"
+fun_a() {
+    declare -n oldpos="$1"
+    declare -n direction="$2"
 
-    echo "A - Pressed: $key"
+    ((oldpos[0]++))
+    ((oldpos[1]++))
+
+    echo "$direction"
 }
 
-test_b() {
-    key="$*"
+fun_b() {
+    local -n foo="$1"
+    local -n bar="$2"
 
-    echo "B - Pressed: $key"
+    fun_a "foo" "bar"
 }
 
-keyboard::register-keys "test_a" "a" "w"
-keyboard::register-keys "test_b" "q" "w"
-keyboard::_dump-register
-keyboard::init
 
-while true; do
-    keyboard::check-for-input
-    # sleep 1
-done
+the_pos=(14 14)
+the_dir="left"
+
+echo "the_pos = ${the_pos[*]}"
+fun_b "the_pos" "the_dir"
+echo "the_pos = ${the_pos[*]}"
