@@ -53,6 +53,14 @@ pacman::init() {
 	map::set-icon-callback "$MAP_CELL_PACMAN" "pacman::_pacman_icon"
 }
 
+declare -A __PACMAN_EAT_CALLBACKS
+pacman::set-eat-callback() {
+	local type="$1"
+	local callback="$2"
+
+	__PACMAN_EAT_CALLBACKS["$type"]="$callback"
+}
+
 pacman::_pacman_icon() {
 	echo "$__PACMAN_ICON"
 }
@@ -101,12 +109,9 @@ pacman::_move() {
 			# Colliding with wall, do nothing
 			return
 			;;
-		"$MAP_CELL_CHEESE")
-			# Hitting Cheese - score a point
-			((SCORE+=1))
-			;;
-		"$MAP_CELL_BONUS")
-			# Hitting a bonus - activate bonus period
+		"$MAP_CELL_CHEESE" | "$MAP_CELL_BONUS")
+			# Hitting Cheese or bonus, do a callback to owner
+			${__PACMAN_EAT_CALLBACKS["$cell_type"]}
 			;;
 		"$MAP_CELL_EMPTY")
 			# Do nothing, just move

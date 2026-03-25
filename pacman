@@ -44,6 +44,7 @@ RUNNING=1
 DEBUG=
 DEBUG_FLAGS=()
 SCORE=0
+BONUS=0
 
 source "$SCRIPT_DIR/lib/keyboard"
 source "$SCRIPT_DIR/lib/map"
@@ -58,11 +59,16 @@ game::setup() {
 
 	# Read in only map I have for now
 	map::read "$SCRIPT_DIR/maps/map1"
+	map::set-pacman-ghost-collision-callback "game::_handle_collision"
 
 	screen::erase-all
 	screen::hide-cursor
 	statusbar::setup
+
 	pacman::init
+	pacman::set-eat-callback "$MAP_CELL_BONUS" "game::_pacman-eat-bonus"
+	pacman::set-eat-callback "$MAP_CELL_CHEESE" "game::_pacman-eat-cheese"
+
 	ghosts::init
 
 	keyboard::register-keys "game::_speed-callback" "+" "-"
@@ -103,6 +109,19 @@ game::_keyboard_callback() {
 	esac	
 }
 
+game::_handle_collision() {
+	RUNNING=""
+}
+
+game::_pacman-eat-bonus() {
+	BONUS=50
+	ghosts::bonus-activated
+}
+
+game::_pacman-eat-cheese() {
+	((SCORE++))
+}
+
 game::teardown() {
 	screen::show-cursor
 }
@@ -134,6 +153,14 @@ game::update-frame() {
 
 	# Reset elapse timer
 	FRAME_TIMER=0
+
+	# Tick down bonus if active
+	if [[ $BONUS -gt 0 ]]; then
+		(( BONUS-- ))
+		
+		# If bonus is over let the ghosts know
+		[[ $BONUS -eq 0 ]] && ghosts::bonus-deactivated
+	fi
 }
 
 game::update-screen() {
@@ -145,6 +172,8 @@ game::update-statusbar() {
 	local fps=$(timer::get-fps)
 
 	local content="Score: $SCORE"
+	[[ $BONUS -gt 0 ]] && content="$content | BONUS ACTIVE"
+
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[1]} ]] && content="$content | Avg. FPS: $fps"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[2]} ]] && content="$content | Direction: $PACMAN_DIRECTION"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[3]} ]] && content="$content | Cheese count: $__MAP_CHEESE_COUNT"
@@ -162,7 +191,7 @@ main() {
 	local i=0
 	timer::start
 
-	# Game loop continues until RUNNING is set!
+	# Game loop continues until RUNNING is unset!
 	while [[ -n $RUNNING ]]; do
 		# Input update
 		game::update-keyboard

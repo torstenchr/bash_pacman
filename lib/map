@@ -290,17 +290,23 @@ map::move-character() {
 	# In case 3 - do nothing, but keep track that one spot is occupied
 	#  by two ghosts
 
-	
-
-
-	case $celltype in
+	case $old_celltype in
 		"$MAP_CELL_PACMAN")
+            # Collided with ghost?
+            [[ "$new_celltype" == "$MAP_CELL_GHOST" ]] && $__MAP_COLLISION_CALLBACK
+
+            # "normal" move
 			__MAP_MOVEABLE_MAP[old_idx]=" "
 			__MAP_MOVEABLE_MAP[new_idx]="P"
 			[[ ${__MAP_BONUS_MAP[new_idx]} == "*" ]] && (( __MAP_CHEESE_COUNT-- ))
 			__MAP_BONUS_MAP[new_idx]=" "
 			;;
 		"$MAP_CELL_GHOST")
+            # Collided with pacman?
+            [[ "$new_celltype" == "$MAP_CELL_PACMAN" ]] && $__MAP_COLLISION_CALLBACK
+
+            # Two or more ghosts on the same cell
+            [[ "$new_celltype" == "$MAP_CELL_GHOST" ]] && true 
 			__MAP_MOVEABLE_MAP[old_idx]=" "
 			__MAP_MOVEABLE_MAP[new_idx]="G"
 			;;
