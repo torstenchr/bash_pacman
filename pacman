@@ -143,8 +143,6 @@ game::update-screen() {
 
 game::update-statusbar() {
 	local fps=$(timer::get-fps)
-	local clock
-	printf -v clock '%(%Y-%m-%d %H:%M:%S)T\n' -1
 
 	local content="Score: $SCORE"
 	[[ -n $DEBUG ]] && [[ -n ${DEBUG_FLAGS[1]} ]] && content="$content | Avg. FPS: $fps"

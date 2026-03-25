@@ -111,6 +111,11 @@ map::set-icon-callback() {
 	__MAP_ICON_CALLBACK["$map_entry"]="$callback"
 }
 
+__MAP_COLLISION_CALLBACK=""
+map::set-pacman-ghost-collision-callback() {
+	__MAP_COLLISION_CALLBACK="$1"
+}
+
 map::_get-dimentions() {
 	local input_map=("$@")
 
@@ -273,7 +278,21 @@ map::move-character() {
 
 	(( old_idx = old_row * __MAP_WIDTH + old_col ))
 	(( new_idx = new_row * __MAP_WIDTH + new_col ))
-	local celltype=$(map::get-cell-type "$old_col" "$old_row" )
+
+	local old_celltype=$(map::get-cell-type "$old_col" "$old_row" )
+	local new_celltype=$(map::get-cell-type "$new_col" "$new_row" )
+
+	# Three type of collisions can happen:
+	# 1: Pacman moves into ghost
+	# 2: Ghost moves into pacman
+	# 3: Ghost moves into ghost
+	# In case 1+2 do a callback to understand how to handle it
+	# In case 3 - do nothing, but keep track that one spot is occupied
+	#  by two ghosts
+
+	
+
+
 	case $celltype in
 		"$MAP_CELL_PACMAN")
 			__MAP_MOVEABLE_MAP[old_idx]=" "
