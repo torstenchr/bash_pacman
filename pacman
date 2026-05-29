@@ -110,7 +110,14 @@ game::_keyboard_callback() {
 }
 
 game::_handle_collision() {
-	RUNNING=""
+	local col="$1"
+	local row="$2"
+
+	if [[ $BONUS -gt 0 ]]; then
+		RUNNING=""
+	else
+		RUNNING=""
+	fi
 }
 
 game::_pacman-eat-bonus() {

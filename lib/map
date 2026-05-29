@@ -104,7 +104,7 @@ map::set-icon-callback() {
 	local map_entry
 	case $type in
 		"$MAP_CELL_PACMAN") map_entry="P";;
-		"$MAP_CELL_GHOST")  map_entry="G";;
+		"$MAP_CELL_GHOST")  map_entry="GHOST";;
 		*) fatal "Not a valid character"
 	esac
 
@@ -195,10 +195,12 @@ map::_prettify-cell() {
 		"s") cell=$__MAP_CELL_BOTTOM_RIGHT;;
 		"|") cell=$__MAP_CELL_WALL_VERT;;
 		"-") cell=$__MAP_CELL_WALL_HORZ;;
-		"x") cell=$__MAP_CELL_EMPTY;;
-		"P" | "G")
-			local pos=( $(map::_index-to-pos "$idx") )  
-			cell=$(${__MAP_ICON_CALLBACK["$cell"]} "${pos[@]}")
+		"x" | " ") cell=$__MAP_CELL_EMPTY;;
+		"P") local pos=( $(map::_index-to-pos "$idx") )  
+			 cell=$(${__MAP_ICON_CALLBACK["$cell"]} "${pos[@]}")
+			 ;;
+		*)	 local pos=( $(map::_index-to-pos "$idx") )
+			 cell=$(${__MAP_ICON_CALLBACK["GHOST"]} "${pos[@]}")
 	esac
 
 	echo "$cell"
@@ -240,7 +242,7 @@ map::get-cell-type() {
 			result=$MAP_CELL_BOX;;
 		"P")
 			result=$MAP_CELL_PACMAN;;
-		"G")
+		"1" | "2" | "3" | "4")
 			result=$MAP_CELL_GHOST;;
 	esac
 
@@ -258,13 +260,32 @@ map::init-character() {
 			map_entry="P"
 			;;
 		"$MAP_CELL_GHOST")
-			map_entry="G"
+			map_entry="1"
 			;;
 		*) fatal "Not a valid character"
 	esac
 
 	(( idx = row * __MAP_WIDTH + col ))
 	__MAP_MOVEABLE_MAP[idx]="$map_entry"
+}
+
+map::_move-ghost() {
+	# Ensure that multiple ghosts can coexist on the sane cell
+	local old_idx="$1"
+	local new_idx="$2"
+
+	# Ghost is moving away from a cell. Always decrement,
+	# but if number of ghost in the old cell is 0, mark it empty
+	local old_ghost=${__MAP_MOVEABLE_MAP[old_idx]}
+	(( old_ghost-- )) && (( old_ghost == 0 )) && old_ghost=" "
+	__MAP_MOVEABLE_MAP[old_idx]="$old_ghost"
+
+	# Ghost is moving into a new cell that might be occupied.
+	# Always increment, but if the cell was empty init content to 0
+	local new_ghost=${__MAP_MOVEABLE_MAP[new_idx]}
+	[[ -z "$new_ghost" ]] && (( new_ghost = 0 ))
+	(( new_ghost++ ))
+	__MAP_MOVEABLE_MAP[new_idx]="$new_ghost"
 }
 
 map::move-character() {
@@ -293,7 +314,7 @@ map::move-character() {
 	case $old_celltype in
 		"$MAP_CELL_PACMAN")
             # Collided with ghost?
-            [[ "$new_celltype" == "$MAP_CELL_GHOST" ]] && $__MAP_COLLISION_CALLBACK
+            [[ "$new_celltype" == "$MAP_CELL_GHOST" ]] && $__MAP_COLLISION_CALLBACK "$new_col" "$new_row"
 
             # "normal" move
 			__MAP_MOVEABLE_MAP[old_idx]=" "
@@ -303,12 +324,12 @@ map::move-character() {
 			;;
 		"$MAP_CELL_GHOST")
             # Collided with pacman?
-            [[ "$new_celltype" == "$MAP_CELL_PACMAN" ]] && $__MAP_COLLISION_CALLBACK
+            [[ "$new_celltype" == "$MAP_CELL_PACMAN" ]] && $__MAP_COLLISION_CALLBACK "$new_col" "$new_row"
 
-            # Two or more ghosts on the same cell
-            [[ "$new_celltype" == "$MAP_CELL_GHOST" ]] && true 
-			__MAP_MOVEABLE_MAP[old_idx]=" "
-			__MAP_MOVEABLE_MAP[new_idx]="G"
+			map::_move-ghost $old_idx $new_idx
+
+			# __MAP_MOVEABLE_MAP[old_idx]=" "
+			# __MAP_MOVEABLE_MAP[new_idx]="G"
 			;;
 		*) log "Trying to move and immovable object: $celltype ($old_col,$old_row)!!"
 	esac

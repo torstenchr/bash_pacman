@@ -33,7 +33,10 @@ source "$SCRIPT_DIR/lib/ghost"
 source "$SCRIPT_DIR/lib/log"
 
 #__GHOST_ICON="ᗣ"
-__GHOST_ICON="#"
+__GHOST_ICON_NORMAL="#"
+__GHOST_ICON_EATEN=":"
+__GHOST_ICON="$__GHOST_ICON_NORMAL"
+
 __GHOST_A_COLOUR="\e[38;5;196m"
 __GHOST_B_COLOUR="\e[38;5;217m"
 __GHOST_C_COLOUR="\e[38;5;51m"
@@ -119,6 +122,10 @@ ghosts::bonus-deactivated() {
     # Restore base colours
     # Start moving according to normal algorithm
     ghost::_set-colour-icons "default"
+}
+
+ghosts::eat() {
+    
 }
 
 SOURCE_GHOSTS=1
